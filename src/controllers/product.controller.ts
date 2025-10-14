@@ -2,6 +2,7 @@ import { catchAsync } from "@utils/catchAsync";
 import Product from "@models/Product";
 import { AppError } from "@utils/AppError";
 import ERROR_MESSAGES from "@config/errorMessages";
+import { cloudinaryService } from "services/cloudinary.service";
 
 export class ProductController {
   public static getAll = catchAsync(async (req, res) => {
@@ -17,27 +18,103 @@ export class ProductController {
   });
 
   public static create = catchAsync(async (req, res) => {
-    const { name, category } = req.body;
+    const { name, description, price, category, stock, sku } = req.body;
 
     const existing = await Product.findOne({ name, category });
     if (existing) throw new AppError(ERROR_MESSAGES.PRODUCT.DUPLICATE, 400);
 
-    const product = await Product.create(req.body);
+    let imageUrls: string[] = [];
+    if (req.files && Array.isArray(req.files)) {
+      const uploadPromises = req.files.map((file: any) =>
+        cloudinaryService.uploadImage(file.path)
+      );
+      imageUrls = await Promise.all(uploadPromises);
+    }
+
+    const product = await Product.create({
+      name,
+      description,
+      price,
+      category,
+      stock,
+      sku,
+      images: imageUrls,
+    });
+    // const product = await Product.create(req.body);
     if (!product) throw new AppError(ERROR_MESSAGES.PRODUCT.CREATE_FAIL, 400);
     res.status(201).json(product);
   });
 
   public static update = catchAsync(async (req, res) => {
-    const product = await Product.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-    });
-    if (!product) throw new AppError(ERROR_MESSAGES.PRODUCT.NOT_FOUND, 404);
-    res.json(product);
+    try {
+      const { name, description, price, category, stock, sku } = req.body;
+      let deletedImages = [];
+
+      if (req.body.deletedImages) {
+        deletedImages = JSON.parse(req.body.deletedImages);
+        for (const url of deletedImages) {
+          const publicId = url.split("/").slice(-1)[0].split(".")[0];
+          await cloudinaryService.deleteImage(publicId);
+        }
+      }
+
+      const newImageUrls: string[] = [];
+      if (req.files && Array.isArray(req.files)) {
+        for (const file of req.files) {
+          const result = await cloudinaryService.uploadImage(file.path);
+          newImageUrls.push(result);
+        }
+      }
+
+      const product = await Product.findById(req.params.id);
+      if (!product)
+        return res.status(404).json({ message: "Product not found" });
+
+      product.name = name;
+      product.description = description;
+      product.price = price;
+      product.category = category;
+      product.stock = stock;
+      product.sku = sku;
+      product.images = [
+        ...(product.images || []).filter((i) => !deletedImages.includes(i)),
+        ...newImageUrls,
+      ];
+
+      await product.save();
+      res.json(product);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ message: "Error updating product" });
+    }
   });
 
   public static delete = catchAsync(async (req, res) => {
-    const product = await Product.findByIdAndDelete(req.params.id);
+    const product = await Product.findById(req.params.id);
     if (!product) throw new AppError(ERROR_MESSAGES.PRODUCT.NOT_FOUND, 404);
-    res.json({ message: "Product deleted successfully" });
+
+    // ✅ Remove all associated Cloudinary images
+    if (product.images && product.images.length > 0) {
+      for (const imageUrl of product.images) {
+        try {
+          // Extract public ID from Cloudinary URL
+          const publicId = imageUrl.split("/").pop()?.split(".")[0];
+          if (publicId) {
+            await cloudinaryService.deleteImage(publicId);
+          }
+        } catch (err) {
+          console.error(
+            `Failed to delete image from Cloudinary: ${imageUrl}`,
+            err
+          );
+        }
+      }
+    }
+
+    await Product.findByIdAndDelete(req.params.id);
+
+    res
+      .status(200)
+      .json({ message: "Product and associated images deleted successfully" });
   });
 }
