@@ -51,6 +51,8 @@ class App {
     // this.app.use("/api/orders", orderRoutes);
     this.app.use(notFoundHandler);
     this.app.use(globalErrorHandler);
+
+    this.app.get('/', (_, res) => res.send('✅ Kirana Admin API running'));
   }
 
   public listen() {
