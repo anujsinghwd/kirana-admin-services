@@ -5,6 +5,7 @@ import ERROR_MESSAGES from "@config/errorMessages";
 import { cloudinaryService } from "services/cloudinary.service";
 import config from "@config/config";
 import { Types } from "mongoose";
+import Product from "@models/Product";
 
 export class SubCategoryController {
   /** 🟢 Get All Subcategories */
@@ -132,26 +133,51 @@ export class SubCategoryController {
     res.json(subCategory);
   });
 
-  /** 🟢 Delete Subcategory */
+  /** 🟢 Delete Subcategory (with products + Cloudinary cleanup) */
   public static delete = catchAsync(async (req, res) => {
-    const subCategoryData = await SubCategory.findById(req.params.id);
-    const subCategory = await SubCategory.findByIdAndDelete(req.params.id);
+    const subCategoryId = req.params.id;
 
-    if (!subCategory)
-      throw new AppError(ERROR_MESSAGES.SUBCATEGORY.DELETE_FAIL, 404);
+    // 🔹 1. Find subcategory
+    const subCategoryData = await SubCategory.findById(subCategoryId);
+    if (!subCategoryData)
+      throw new AppError(ERROR_MESSAGES.SUBCATEGORY.NOT_FOUND, 404);
 
-    // Delete Cloudinary image if exists
-    const publicId = subCategoryData?.image
-      ?.split("/")
-      .slice(-1)[0]
-      .split(".")[0];
-    if (publicId) {
+    // 🔹 2. Find all products linked to this subcategory
+    const products = await Product.find({ subcategory: subCategoryId });
+
+    // 🔹 3. Delete all product images from Cloudinary
+    await Promise.all(
+      products.flatMap((product) =>
+        (product.images || []).map(async (img) => {
+          const publicId = img.split("/").slice(-1)[0].split(".")[0];
+          await cloudinaryService.deleteImage(
+            publicId,
+            config.PRODUCT_IMAGE_PATH
+          );
+        })
+      )
+    );
+
+    // 🔹 4. Delete the products from DB
+    await Product.deleteMany({ subcategory: subCategoryId });
+
+    // 🔹 5. Delete subcategory image from Cloudinary if exists
+    if (subCategoryData.image) {
+      const publicId = subCategoryData.image
+        .split("/")
+        .slice(-1)[0]
+        .split(".")[0];
       await cloudinaryService.deleteImage(
         publicId,
         config.SUBCATEGORY_IMAGE_PATH
       );
     }
 
-    res.json({ message: ERROR_MESSAGES.SUBCATEGORY.DELETE_SUCCESS });
+    // 🔹 6. Delete subcategory from DB
+    await SubCategory.findByIdAndDelete(subCategoryId);
+
+    res.json({
+      message: "Subcategory and all related products deleted successfully.",
+    });
   });
 }
