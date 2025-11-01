@@ -14,6 +14,17 @@ const ERROR_MESSAGES = {
     DELETE_FAIL: "Failed to delete category",
     DELETE_SUCCESS: "Category deleted successfully",
     FETCH_FAIL: "Failed to fetch categories",
+    IMAGE_NOT_FOUND: "Category Image not found"
+  },
+  SUBCATEGORY: {
+    NOT_FOUND: "SubCategory not found",
+    CREATE_FAIL: "Failed to create subcategory",
+    UPDATE_FAIL: "Failed to update subcategory",
+    DELETE_FAIL: "Failed to delete subcategory",
+    DELETE_SUCCESS: "SubCategory deleted successfully",
+    FETCH_FAIL: "Failed to fetch categories",
+    IMAGE_NOT_FOUND: "SubCategory Image not found",
+    INVALID_CATEGORY_ID: "Invalid categoryId"
   },
   ORDER: {
     NOT_FOUND: "Order not found",

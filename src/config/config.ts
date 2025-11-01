@@ -13,5 +13,8 @@ export default {
     CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME || '',
     API_KEY: process.env.CLOUDINARY_API_KEY || '',
     API_SECRET: process.env.CLOUDINARY_API_SECRET || ''
-  }
+  },
+  PRODUCT_IMAGE_PATH: 'products',
+  CATEGORY_IMAGE_PATH: 'categories',
+  SUBCATEGORY_IMAGE_PATH: "subcategories",
 };

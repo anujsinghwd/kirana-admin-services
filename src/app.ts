@@ -9,6 +9,7 @@ import productRoutes from "@routes/product.routes";
 import { connectDB } from "@utils/db";
 import categoryRoutes from "@routes/category.routes";
 import userRoutes from '@routes/user.routes';
+import subCategoryRoutes from '@routes/subcategory.routes';
 
 // Middlewares
 import { requestLogger } from '@middlewares/logger.middleware';
@@ -47,6 +48,7 @@ class App {
   private initializeRoutes() {
     this.app.use("/api/products", productRoutes);
     this.app.use("/api/categories", categoryRoutes);
+    this.app.use("/api/subcategories", subCategoryRoutes);
     this.app.use('/api/users', userRoutes);
     // this.app.use("/api/orders", orderRoutes);
     this.app.use(notFoundHandler);

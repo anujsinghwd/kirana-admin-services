@@ -13,7 +13,7 @@ class CloudinaryService {
     })
   }
 
-  async uploadImage(filePath: string, folder: string = 'products') {
+  async uploadImage(filePath: string, folder: string) {
     try {
       logger.info(`Start uploading file: ${filePath}`);
       const result = await cloudinary.uploader.upload(filePath, {
@@ -27,10 +27,10 @@ class CloudinaryService {
     }
   }
 
-  async deleteImage(publicId: string) {
+  async deleteImage(publicId: string, folder: string) {
     try {
       logger.info(`Start deleting fileId: ${publicId}`);
-      const result = await cloudinary.uploader.destroy(`products/${publicId}`)
+      const result = await cloudinary.uploader.destroy(`${folder}/${publicId}`)
       logger.info(`Image Deleted: ${result}`);
       return result
     } catch (error: any) {

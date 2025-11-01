@@ -7,7 +7,6 @@ export const requestLogger = (
   next: NextFunction
 ) => {
   const { method, url, params, query, body } = req;
-  console.log('worksss');
   // Log request
   logger.info(
     `Request => Method: ${method}, URL: ${url}, Params: ${JSON.stringify(

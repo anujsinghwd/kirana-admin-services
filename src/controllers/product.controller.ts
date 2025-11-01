@@ -1,8 +1,10 @@
 import { catchAsync } from "@utils/catchAsync";
-import Product from "@models/Product";
+import Product, { IProductDTO } from "@models/Product";
 import { AppError } from "@utils/AppError";
 import ERROR_MESSAGES from "@config/errorMessages";
 import { cloudinaryService } from "services/cloudinary.service";
+import config from "@config/config";
+import { getImagePublicId } from "@utils/utils";
 
 export class ProductController {
   public static getAll = catchAsync(async (req, res) => {
@@ -18,7 +20,7 @@ export class ProductController {
   });
 
   public static create = catchAsync(async (req, res) => {
-    const { name, description, price, category, stock, sku } = req.body;
+    const { name, description, price, category, stock, sku, unit, discount, offerPrice, subcategory } = req.body;
 
     const existing = await Product.findOne({ name, category });
     if (existing) throw new AppError(ERROR_MESSAGES.PRODUCT.DUPLICATE, 400);
@@ -26,20 +28,28 @@ export class ProductController {
     let imageUrls: string[] = [];
     if (req.files && Array.isArray(req.files)) {
       const uploadPromises = req.files.map((file: any) =>
-        cloudinaryService.uploadImage(file.path)
+        cloudinaryService.uploadImage(file.path, config.PRODUCT_IMAGE_PATH)
       );
       imageUrls = await Promise.all(uploadPromises);
     }
 
-    const product = await Product.create({
+    const createProductObj: Partial<IProductDTO> = {
       name,
       description,
       price,
       category,
       stock,
-      sku,
       images: imageUrls,
-    });
+      unit,
+      discount,
+      offerPrice,
+      subcategory
+    };
+    if(sku) {
+      createProductObj.sku = sku;
+    }
+
+    const product = await Product.create(createProductObj);
     // const product = await Product.create(req.body);
     if (!product) throw new AppError(ERROR_MESSAGES.PRODUCT.CREATE_FAIL, 400);
     res.status(201).json(product);
@@ -54,14 +64,14 @@ export class ProductController {
         deletedImages = JSON.parse(req.body.deletedImages);
         for (const url of deletedImages) {
           const publicId = url.split("/").slice(-1)[0].split(".")[0];
-          await cloudinaryService.deleteImage(publicId);
+          await cloudinaryService.deleteImage(publicId, config.PRODUCT_IMAGE_PATH);
         }
       }
 
       const newImageUrls: string[] = [];
       if (req.files && Array.isArray(req.files)) {
         for (const file of req.files) {
-          const result = await cloudinaryService.uploadImage(file.path);
+          const result = await cloudinaryService.uploadImage(file.path, config.PRODUCT_IMAGE_PATH);
           newImageUrls.push(result);
         }
       }
@@ -98,9 +108,9 @@ export class ProductController {
       for (const imageUrl of product.images) {
         try {
           // Extract public ID from Cloudinary URL
-          const publicId = imageUrl.split("/").pop()?.split(".")[0];
+          const publicId = getImagePublicId(imageUrl);
           if (publicId) {
-            await cloudinaryService.deleteImage(publicId);
+            await cloudinaryService.deleteImage(publicId, config.PRODUCT_IMAGE_PATH);
           }
         } catch (err) {
           console.error(
