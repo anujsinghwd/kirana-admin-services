@@ -4,9 +4,11 @@
   "description": "",
   "main": "dist/server.js",
   "scripts": {
+    "start": "nodemon src/server.ts",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
-    "build": "tsc",
-    "start": "node -r tsconfig-paths/register dist/server.js",
+    "build": "rimraf dist && tsc && tsc-alias",
+    "ts.check": "tsc --project tsconfig.json",
+    "add-build": "git add dist",
     "seed": "ts-node src/seed.ts"
   },
   "keywords": [],
@@ -37,10 +39,17 @@
     "@types/node": "^24.7.2",
     "@types/winston": "^2.4.4",
     "nodemon": "^3.1.10",
+    "pre-commit": "^1.2.2",
+    "rimraf": "^6.1.0",
     "ts-node": "^10.9.2",
     "ts-node-dev": "^2.0.0",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.9.3",
     "typescript-transform-paths": "^3.5.5"
-  }
+  },
+  "pre-commit": [
+    "ts.check",
+    "build",
+    "add-build"
+  ]
 }
