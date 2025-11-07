@@ -20,7 +20,7 @@ import { notFoundHandler } from '@middlewares/notFound.middleware';
 dotenv.config();
 
 const corsOptions = {
-    origin: 'http://localhost:5173', // Allow only requests from this origin
+    origin: ['http://localhost:5173', 'https://kirana-admin-app.vercel.app'], // Allow only requests from this origin
     methods: 'GET,POST,PUT,DELETE', // Allow only these methods
     allowedHeaders: ['Content-Type', 'Authorization'] // Allow only these headers
 };
