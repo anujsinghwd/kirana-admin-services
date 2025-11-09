@@ -1,16 +1,21 @@
 import multer from "multer";
-import path from "path";
-import fs from "fs";
 
-const uploadDir = path.join(__dirname, "../../uploads");
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+/**
+ * ✅ Multer configuration for in-memory processing (no local uploads)
+ * Files are available in `req.file.buffer` or `req.files[i].buffer`
+ */
+const storage = multer.memoryStorage();
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadDir),
-  filename: (req, file, cb) => {
-    const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-    cb(null, unique + path.extname(file.originalname));
+export const upload = multer({
+  storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024, // ⛔ limit: 5MB per file
+  },
+  fileFilter: (req, file, cb) => {
+    const allowed = ["image/jpeg", "image/png", "image/webp"];
+    if (!allowed.includes(file.mimetype)) {
+      return cb(new Error("Only JPEG, PNG, and WEBP images are allowed"));
+    }
+    cb(null, true);
   },
 });
-
-export const upload = multer({ storage });

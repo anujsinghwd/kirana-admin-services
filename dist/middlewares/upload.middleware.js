@@ -5,16 +5,21 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.upload = void 0;
 const multer_1 = __importDefault(require("multer"));
-const path_1 = __importDefault(require("path"));
-const fs_1 = __importDefault(require("fs"));
-const uploadDir = path_1.default.join(__dirname, "../../uploads");
-if (!fs_1.default.existsSync(uploadDir))
-    fs_1.default.mkdirSync(uploadDir, { recursive: true });
-const storage = multer_1.default.diskStorage({
-    destination: (req, file, cb) => cb(null, uploadDir),
-    filename: (req, file, cb) => {
-        const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-        cb(null, unique + path_1.default.extname(file.originalname));
+/**
+ * ✅ Multer configuration for in-memory processing (no local uploads)
+ * Files are available in `req.file.buffer` or `req.files[i].buffer`
+ */
+const storage = multer_1.default.memoryStorage();
+exports.upload = (0, multer_1.default)({
+    storage,
+    limits: {
+        fileSize: 5 * 1024 * 1024, // ⛔ limit: 5MB per file
+    },
+    fileFilter: (req, file, cb) => {
+        const allowed = ["image/jpeg", "image/png", "image/webp"];
+        if (!allowed.includes(file.mimetype)) {
+            return cb(new Error("Only JPEG, PNG, and WEBP images are allowed"));
+        }
+        cb(null, true);
     },
 });
-exports.upload = (0, multer_1.default)({ storage });

@@ -36,17 +36,39 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const ProductSchema = new mongoose_1.Schema({
     name: { type: String, required: true },
-    price: { type: Number, required: true },
     description: { type: String },
     category: { type: mongoose_1.Schema.Types.ObjectId, ref: "Category", required: true },
     subcategory: { type: mongoose_1.Schema.Types.ObjectId, ref: "SubCategory", required: true },
     images: [{ type: String, required: true }],
-    stock: { type: Number, default: 0 },
-    offerPrice: { type: Number },
-    sku: { type: String },
-    unit: { type: Number, default: null },
-    discount: { type: Number, default: 0 },
-    published: { type: Boolean, default: true }
+    // ✅ Variants with Shelf Life Info
+    variants: [
+        {
+            unitValue: { type: Number, required: true },
+            unitType: {
+                type: String,
+                enum: ["gm", "kg", "ml", "ltr", "piece", "packet", "box"],
+                required: true,
+            },
+            price: { type: Number, required: true },
+            offerPrice: { type: Number },
+            discount: { type: Number, default: 0 },
+            stock: { type: Number, default: 0 },
+            sku: { type: String },
+            // ✅ Shelf Life Section
+            shelfLife: {
+                duration: { type: Number, default: null }, // e.g. 6
+                unit: {
+                    type: String,
+                    enum: ["days", "months", "years"],
+                    default: "months",
+                },
+                manufacturingDate: { type: Date },
+                expiryDate: { type: Date },
+                bestBefore: { type: String }, // optional textual note
+            },
+        },
+    ],
+    published: { type: Boolean, default: true },
 }, { timestamps: true });
 ProductSchema.index({ name: 1, category: 1 }, { unique: true });
 exports.default = mongoose_1.default.model("Product", ProductSchema);
