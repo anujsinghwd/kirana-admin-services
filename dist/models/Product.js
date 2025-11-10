@@ -40,7 +40,7 @@ const ProductSchema = new mongoose_1.Schema({
     category: { type: mongoose_1.Schema.Types.ObjectId, ref: "Category", required: true },
     subcategory: { type: mongoose_1.Schema.Types.ObjectId, ref: "SubCategory", required: true },
     images: [{ type: String, required: true }],
-    // ✅ Variants with Shelf Life Info
+    // ✅ Variant-based products (packaged)
     variants: [
         {
             unitValue: { type: Number, required: true },
@@ -54,21 +54,34 @@ const ProductSchema = new mongoose_1.Schema({
             discount: { type: Number, default: 0 },
             stock: { type: Number, default: 0 },
             sku: { type: String },
-            // ✅ Shelf Life Section
             shelfLife: {
-                duration: { type: Number, default: null }, // e.g. 6
-                unit: {
-                    type: String,
-                    enum: ["days", "months", "years"],
-                    default: "months",
-                },
+                duration: { type: Number, default: null },
+                unit: { type: String, enum: ["days", "months", "years"], default: "months" },
                 manufacturingDate: { type: Date },
                 expiryDate: { type: Date },
-                bestBefore: { type: String }, // optional textual note
+                bestBefore: { type: String },
             },
         },
     ],
+    // ⚖️ Loose item configuration
+    isLoose: { type: Boolean, default: false },
+    looseConfig: {
+        unitType: { type: String, enum: ["gm", "kg", "ml", "ltr"] },
+        pricePerUnit: { type: Number },
+        availableQty: { type: Number, default: 0 },
+        minQtyAllowed: { type: Number, default: 100 }, // e.g. 100g
+        stepQty: { type: Number, default: 50 }, // increments
+    },
     published: { type: Boolean, default: true },
 }, { timestamps: true });
+// ✅ Ensure unique name-category combo
 ProductSchema.index({ name: 1, category: 1 }, { unique: true });
+// ✅ Validation middleware (prevent both loose + variants)
+ProductSchema.pre("save", function (next) {
+    const product = this;
+    if (product.isLoose && product.variants && product.variants.length > 0) {
+        return next(new Error("Loose items cannot have variant list. Either use variants OR looseConfig."));
+    }
+    next();
+});
 exports.default = mongoose_1.default.model("Product", ProductSchema);

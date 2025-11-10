@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+
 export interface IShelfLife {
   duration?: number;
   unit?: "days" | "months" | "years";
@@ -18,6 +19,15 @@ export interface IProductVariant {
   shelfLife?: IShelfLife;
 }
 
+/** ⚖️ Loose Config Interface */
+export interface ILooseConfig {
+  unitType: "gm" | "kg" | "ml" | "ltr";  // base selling unit
+  pricePerUnit: number;                  // price per 1 unit (e.g. ₹50/kg)
+  availableQty: number;                  // total available stock in same unit
+  minQtyAllowed?: number;                // e.g. 50g or 100ml
+  stepQty?: number;                      // step size (50g increments)
+}
+
 export interface IProductDTO extends Document {
   name: string;
   description?: string;
@@ -26,6 +36,9 @@ export interface IProductDTO extends Document {
   images: string[];
   variants: IProductVariant[];
   published: boolean;
+  /** 👇 new fields */
+  isLoose?: boolean;
+  looseConfig?: ILooseConfig;
 }
 
 export interface IProduct extends IProductDTO, Document {}
@@ -38,7 +51,7 @@ const ProductSchema = new Schema<IProduct>(
     subcategory: { type: Schema.Types.ObjectId, ref: "SubCategory", required: true },
     images: [{ type: String, required: true }],
 
-    // ✅ Variants with Shelf Life Info
+    // ✅ Variant-based products (packaged)
     variants: [
       {
         unitValue: { type: Number, required: true },
@@ -52,28 +65,43 @@ const ProductSchema = new Schema<IProduct>(
         discount: { type: Number, default: 0 },
         stock: { type: Number, default: 0 },
         sku: { type: String },
-
-        // ✅ Shelf Life Section
         shelfLife: {
-          duration: { type: Number, default: null }, // e.g. 6
-          unit: {
-            type: String,
-            enum: ["days", "months", "years"],
-            default: "months",
-          },
+          duration: { type: Number, default: null },
+          unit: { type: String, enum: ["days", "months", "years"], default: "months" },
           manufacturingDate: { type: Date },
           expiryDate: { type: Date },
-          bestBefore: { type: String }, // optional textual note
+          bestBefore: { type: String },
         },
       },
     ],
+
+    // ⚖️ Loose item configuration
+    isLoose: { type: Boolean, default: false },
+    looseConfig: {
+      unitType: { type: String, enum: ["gm", "kg", "ml", "ltr"] },
+      pricePerUnit: { type: Number },
+      availableQty: { type: Number, default: 0 },
+      minQtyAllowed: { type: Number, default: 100 }, // e.g. 100g
+      stepQty: { type: Number, default: 50 }, // increments
+    },
 
     published: { type: Boolean, default: true },
   },
   { timestamps: true }
 );
 
-
+// ✅ Ensure unique name-category combo
 ProductSchema.index({ name: 1, category: 1 }, { unique: true });
+
+// ✅ Validation middleware (prevent both loose + variants)
+ProductSchema.pre("save", function (next) {
+  const product = this as IProduct;
+  if (product.isLoose && product.variants && product.variants.length > 0) {
+    return next(
+      new Error("Loose items cannot have variant list. Either use variants OR looseConfig.")
+    );
+  }
+  next();
+});
 
 export default mongoose.model<IProduct>("Product", ProductSchema);
