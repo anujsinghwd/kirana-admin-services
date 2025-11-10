@@ -145,7 +145,8 @@ ProductController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
         throw new AppError_1.AppError(errorMessages_1.default.PRODUCT.DUPLICATE, 400);
     let imageUrls = [];
     if (req.files && Array.isArray(req.files)) {
-        const uploadPromises = req.files.map((file) => cloudinary_service_1.cloudinaryService.uploadImage(file.path, config_1.default.PRODUCT_IMAGE_PATH));
+        // Parallel uploads for all memory buffers
+        const uploadPromises = req.files.map((file) => cloudinary_service_1.cloudinaryService.uploadImage(file.buffer, config_1.default.PRODUCT_IMAGE_PATH));
         imageUrls = await Promise.all(uploadPromises);
     }
     const product = await Product_1.default.create({

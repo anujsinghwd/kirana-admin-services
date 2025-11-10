@@ -149,11 +149,13 @@ export class ProductController {
 
     let imageUrls: string[] = [];
     if (req.files && Array.isArray(req.files)) {
-      const uploadPromises = req.files.map((file: any) =>
-        cloudinaryService.uploadImage(file.path, config.PRODUCT_IMAGE_PATH)
-      );
-      imageUrls = await Promise.all(uploadPromises);
-    }
+  // Parallel uploads for all memory buffers
+  const uploadPromises = req.files.map((file: Express.Multer.File) =>
+    cloudinaryService.uploadImage(file.buffer, config.PRODUCT_IMAGE_PATH)
+  );
+
+  imageUrls = await Promise.all(uploadPromises);
+}
 
     const product = await Product.create({
       name,

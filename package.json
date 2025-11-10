@@ -26,6 +26,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
+    "streamifier": "^0.1.1",
     "winston": "^3.18.3"
   },
   "devDependencies": {
@@ -37,6 +38,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.7.2",
+    "@types/streamifier": "^0.1.2",
     "@types/winston": "^2.4.4",
     "nodemon": "^3.1.10",
     "pre-commit": "^1.2.2",

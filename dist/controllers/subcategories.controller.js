@@ -33,8 +33,13 @@ SubCategoryController.getById = (0, catchAsync_1.catchAsync)(async (req, res) =>
 SubCategoryController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
     let imageUrl = "";
     // Upload image to Cloudinary if present
-    if (req.file?.filename) {
-        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.SUBCATEGORY_IMAGE_PATH);
+    if (req.file?.buffer) {
+        // 🧠 Memory upload
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.buffer, config_1.default.CATEGORY_IMAGE_PATH);
+    }
+    else if (req.file?.path) {
+        // 📁 File path upload (fallback)
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.CATEGORY_IMAGE_PATH);
     }
     // Ensure category IDs are valid ObjectIds
     const categoryIds = Array.isArray(req.body.category)
@@ -81,8 +86,14 @@ SubCategoryController.removeImage = (0, catchAsync_1.catchAsync)(async (req, res
 /** 🟢 Update Subcategory */
 SubCategoryController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
     let imageUrl = "";
-    if (req.file?.filename) {
-        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.SUBCATEGORY_IMAGE_PATH);
+    // Upload image to Cloudinary if present
+    if (req.file?.buffer) {
+        // 🧠 Memory upload
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.buffer, config_1.default.CATEGORY_IMAGE_PATH);
+    }
+    else if (req.file?.path) {
+        // 📁 File path upload (fallback)
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.CATEGORY_IMAGE_PATH);
     }
     // Handle category IDs
     let categoryIds = [];

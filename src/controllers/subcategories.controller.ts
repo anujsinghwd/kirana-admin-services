@@ -33,10 +33,17 @@ export class SubCategoryController {
     let imageUrl: string = "";
 
     // Upload image to Cloudinary if present
-    if (req.file?.filename) {
+    if (req.file?.buffer) {
+      // 🧠 Memory upload
+      imageUrl = await cloudinaryService.uploadImage(
+        req.file.buffer,
+        config.CATEGORY_IMAGE_PATH
+      );
+    } else if (req.file?.path) {
+      // 📁 File path upload (fallback)
       imageUrl = await cloudinaryService.uploadImage(
         req.file.path,
-        config.SUBCATEGORY_IMAGE_PATH
+        config.CATEGORY_IMAGE_PATH
       );
     }
 
@@ -99,10 +106,18 @@ export class SubCategoryController {
   public static update = catchAsync(async (req, res) => {
     let imageUrl: string = "";
 
-    if (req.file?.filename) {
+    // Upload image to Cloudinary if present
+    if (req.file?.buffer) {
+      // 🧠 Memory upload
+      imageUrl = await cloudinaryService.uploadImage(
+        req.file.buffer,
+        config.CATEGORY_IMAGE_PATH
+      );
+    } else if (req.file?.path) {
+      // 📁 File path upload (fallback)
       imageUrl = await cloudinaryService.uploadImage(
         req.file.path,
-        config.SUBCATEGORY_IMAGE_PATH
+        config.CATEGORY_IMAGE_PATH
       );
     }
 

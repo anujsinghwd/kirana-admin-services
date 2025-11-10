@@ -29,7 +29,13 @@ CategoryController.getById = (0, catchAsync_1.catchAsync)(async (req, res) => {
 });
 CategoryController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
     let imageUrl = "";
-    if (req.file?.filename) {
+    // Upload image to Cloudinary if present
+    if (req.file?.buffer) {
+        // 🧠 Memory upload
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.buffer, config_1.default.CATEGORY_IMAGE_PATH);
+    }
+    else if (req.file?.path) {
+        // 📁 File path upload (fallback)
         imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.CATEGORY_IMAGE_PATH);
     }
     const createCategoryObj = {
@@ -62,7 +68,13 @@ CategoryController.removeImage = (0, catchAsync_1.catchAsync)(async (req, res) =
 });
 CategoryController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
     let imageUrl = "";
-    if (req.file?.filename) {
+    // Upload image to Cloudinary if present
+    if (req.file?.buffer) {
+        // 🧠 Memory upload
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.buffer, config_1.default.CATEGORY_IMAGE_PATH);
+    }
+    else if (req.file?.path) {
+        // 📁 File path upload (fallback)
         imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.CATEGORY_IMAGE_PATH);
     }
     const updateObj = { ...req.body };
