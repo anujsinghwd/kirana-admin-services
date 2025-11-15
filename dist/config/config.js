@@ -6,7 +6,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const dotenv_1 = __importDefault(require("dotenv"));
 dotenv_1.default.config();
 exports.default = {
-    PORT: process.env.PORT || 5000,
+    PORT: process.env.PORT || 5001,
     MONGO_URI: process.env.MONGO_URI || 'mongodb://localhost:27017/kirana',
     UPLOAD_PATH: process.env.UPLOAD_PATH || 'uploads/',
     API_PREFIX: '/api',

@@ -26,6 +26,7 @@ const protect = async (req, res, next) => {
         next();
     }
     catch (err) {
+        console.log(err);
         return next(new AppError_1.AppError("Invalid token", 401));
     }
 };

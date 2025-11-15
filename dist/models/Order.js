@@ -34,20 +34,75 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
+/* ---------------------------------------------
+ * 🔹 Order Item Schema
+ * --------------------------------------------- */
 const orderItemSchema = new mongoose_1.Schema({
     productId: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: "Product",
         required: true,
     },
+    variantId: {
+        type: mongoose_1.Schema.Types.ObjectId,
+        ref: "Product.variants",
+        default: null,
+    },
+    isLooseItem: { type: Boolean, default: false },
+    looseDetails: {
+        unitType: { type: String, enum: ["gm", "kg", "ml", "ltr"], default: null },
+        pricePerUnit: { type: Number, default: 0 },
+    },
     product_details: {
         name: { type: String, required: true },
-        image: { type: [String], default: [] },
+        images: [{ type: String }],
+        category: { type: String },
+        subcategory: { type: String },
     },
-    quantity: { type: Number, default: 1 },
+    quantity: { type: Number, default: 1, min: 0 },
+    unit: { type: String, default: "" },
     price: { type: Number, required: true },
     subTotal: { type: Number, required: true },
 }, { _id: false });
+/* ---------------------------------------------
+ * 🔹 Tracking Schema
+ * --------------------------------------------- */
+const trackingSchema = new mongoose_1.Schema({
+    status: {
+        type: String,
+        enum: [
+            "Pending",
+            "Processing",
+            "Packed",
+            "Out for Delivery",
+            "Delivered",
+            "Cancelled",
+            "Takeout Ready",
+            "Completed",
+        ],
+        default: "Pending",
+    },
+    timestamp: { type: Date, default: Date.now },
+    note: { type: String },
+    updatedBy: { type: mongoose_1.Schema.Types.ObjectId, ref: "User" },
+}, { _id: false });
+/* ---------------------------------------------
+ * 🔹 Assigned Personnel Schema
+ * --------------------------------------------- */
+const assignedPersonnelSchema = new mongoose_1.Schema({
+    role: {
+        type: String,
+        enum: ["Delivery", "Picker", "Manager", "Cashier"],
+        required: true,
+    },
+    userId: { type: mongoose_1.Schema.Types.ObjectId, ref: "User", required: true },
+    name: { type: String, required: true },
+    contact: { type: String },
+    assignedAt: { type: Date, default: Date.now },
+}, { _id: false });
+/* ---------------------------------------------
+ * 🔹 Order Schema
+ * --------------------------------------------- */
 const orderSchema = new mongoose_1.Schema({
     userId: {
         type: mongoose_1.Schema.Types.ObjectId,
@@ -56,7 +111,7 @@ const orderSchema = new mongoose_1.Schema({
     },
     orderId: {
         type: String,
-        required: [true, "Provide orderId"],
+        required: true,
         unique: true,
     },
     items: {
@@ -66,22 +121,53 @@ const orderSchema = new mongoose_1.Schema({
             message: "Order must contain at least one product.",
         },
     },
-    paymentId: {
+    orderType: {
         type: String,
-        default: "",
+        enum: ["Delivery", "Takeout"],
+        default: "Delivery",
     },
+    paymentId: { type: String, default: "" },
     payment_status: {
         type: String,
+        enum: ["Pending", "Paid", "Failed", "Refunded"],
         default: "Pending",
+    },
+    payment_method: {
+        type: String,
+        enum: ["COD", "Card", "UPI", "Wallet"],
+        default: "COD",
     },
     delivery_address: {
         type: mongoose_1.Schema.Types.ObjectId,
         ref: "Address",
-        required: true,
     },
     subTotalAmt: { type: Number, default: 0 },
+    totalDiscount: { type: Number, default: 0 },
     totalAmt: { type: Number, default: 0 },
     invoice_receipt: { type: String, default: "" },
+    // CRM / Tracking Fields
+    order_status: {
+        type: String,
+        enum: [
+            "Pending",
+            "Processing",
+            "Packed",
+            "Out for Delivery",
+            "Delivered",
+            "Cancelled",
+            "Completed",
+            "Takeout Ready",
+        ],
+        default: "Pending",
+    },
+    tracking: { type: [trackingSchema], default: [] },
+    assigned_personnel: { type: [assignedPersonnelSchema], default: [] },
+    completedAt: { type: Date },
+    cancelledAt: { type: Date },
+    reasonForCancellation: { type: String },
 }, { timestamps: true });
+/* ---------------------------------------------
+ * 🔹 Model Export
+ * --------------------------------------------- */
 const OrderModel = mongoose_1.default.model("Order", orderSchema);
 exports.default = OrderModel;

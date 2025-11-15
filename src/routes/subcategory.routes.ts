@@ -1,8 +1,12 @@
 import express from "express";
 import { SubCategoryController } from "@controllers/subcategories.controller";
 import { upload } from "@middlewares/upload.middleware";
+import { protect } from "@middlewares/auth.middleware";
 
 const router = express.Router();
+
+// Protected routes
+router.use(protect);
 
 // 🟢 Get all subcategories
 router.get("/", SubCategoryController.getAll);

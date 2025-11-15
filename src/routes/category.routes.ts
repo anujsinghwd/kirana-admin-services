@@ -1,9 +1,12 @@
 import express from "express";
 import { CategoryController } from "@controllers/category.controller";
 import { upload } from "@middlewares/upload.middleware";
+import { protect } from "@middlewares/auth.middleware";
 
 const router = express.Router();
 
+// Protected routes
+router.use(protect);
 // CRUD routes
 router.get("/", CategoryController.getAll);
 router.get("/:id", CategoryController.getById);

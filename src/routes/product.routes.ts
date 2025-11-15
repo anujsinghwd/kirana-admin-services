@@ -5,8 +5,12 @@ import { validateRequest } from "@middlewares/validate.middleware";
 import { createProductSchema } from "@validators/product.validator";
 import { upload } from "@middlewares/upload.middleware";
 import { preprocessProductFormData } from "@middlewares/preprocessProductFormData";
+import { protect } from "@middlewares/auth.middleware";
 
 const router = express.Router();
+
+// Protected routes
+router.use(protect);
 
 router.post(
   "/",

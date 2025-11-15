@@ -3,7 +3,7 @@ import config from '@config/config';
 
 export const signToken = (payload: object) => {
   const options: SignOptions = {
-    expiresIn: config.JWT_EXPIRES_IN
+    expiresIn: '20h'
   };
   return jwt.sign(payload, config.JWT_SECRET as jwt.Secret, options);
 };

@@ -33,6 +33,7 @@ export const protect = async (
     req.user = user;
     next();
   } catch (err) {
+    console.log(err);
     return next(new AppError("Invalid token", 401));
   }
 };

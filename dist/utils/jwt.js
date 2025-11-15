@@ -8,7 +8,7 @@ const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const config_1 = __importDefault(require("../config/config"));
 const signToken = (payload) => {
     const options = {
-        expiresIn: config_1.default.JWT_EXPIRES_IN
+        expiresIn: '20h'
     };
     return jsonwebtoken_1.default.sign(payload, config_1.default.JWT_SECRET, options);
 };

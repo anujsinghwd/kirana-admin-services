@@ -6,7 +6,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = __importDefault(require("express"));
 const subcategories_controller_1 = require("../controllers/subcategories.controller");
 const upload_middleware_1 = require("../middlewares/upload.middleware");
+const auth_middleware_1 = require("../middlewares/auth.middleware");
 const router = express_1.default.Router();
+// Protected routes
+router.use(auth_middleware_1.protect);
 // 🟢 Get all subcategories
 router.get("/", subcategories_controller_1.SubCategoryController.getAll);
 // 🟢 Get subcategories by category ID
