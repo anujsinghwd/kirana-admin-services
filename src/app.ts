@@ -11,6 +11,8 @@ import categoryRoutes from "@routes/category.routes";
 import userRoutes from '@routes/user.routes';
 import subCategoryRoutes from '@routes/subcategory.routes';
 import orderRoutes from '@routes/order.routes';
+import dashboardRouter from "@routes/dashboard.routes";
+
 
 // Middlewares
 import { requestLogger } from '@middlewares/logger.middleware';
@@ -52,6 +54,7 @@ class App {
     this.app.use("/api/subcategories", subCategoryRoutes);
     this.app.use('/api/users', userRoutes);
     this.app.use("/api/orders", orderRoutes);
+    this.app.use("/api/dashboard", dashboardRouter);
     this.app.use(notFoundHandler);
     this.app.use(globalErrorHandler);
 

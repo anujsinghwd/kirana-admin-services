@@ -15,6 +15,7 @@ const category_routes_1 = __importDefault(require("./routes/category.routes"));
 const user_routes_1 = __importDefault(require("./routes/user.routes"));
 const subcategory_routes_1 = __importDefault(require("./routes/subcategory.routes"));
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
+const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes"));
 // Middlewares
 const logger_middleware_1 = require("./middlewares/logger.middleware");
 const error_middleware_1 = require("./middlewares/error.middleware");
@@ -46,6 +47,7 @@ class App {
         this.app.use("/api/subcategories", subcategory_routes_1.default);
         this.app.use('/api/users', user_routes_1.default);
         this.app.use("/api/orders", order_routes_1.default);
+        this.app.use("/api/dashboard", dashboard_routes_1.default);
         this.app.use(notFound_middleware_1.notFoundHandler);
         this.app.use(error_middleware_1.globalErrorHandler);
         this.app.get('/', (_, res) => res.send('✅ Kirana Admin API running'));
