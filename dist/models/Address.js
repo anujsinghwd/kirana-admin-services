@@ -73,5 +73,5 @@ const addressSchema = new mongoose_1.Schema({
     timestamps: true,
 });
 // 3️⃣ Create the model with type safety
-const AddressModel = mongoose_1.default.models.Address || mongoose_1.default.model("Address", addressSchema);
+const AddressModel = mongoose_1.default.model("Address", addressSchema);
 exports.default = AddressModel;

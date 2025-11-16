@@ -5,6 +5,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.assignPersonnelController = exports.updateOrderStatusController = exports.getOrderByIdController = exports.getOrderDetailsController = void 0;
 const Order_1 = __importDefault(require("../models/Order"));
+const Address_1 = __importDefault(require("../models/Address"));
 /**
  * Allowed statuses - must match OrderModel enums
  */
@@ -180,7 +181,8 @@ const getOrderByIdController = async (req, res) => {
             });
         }
         const order = await Order_1.default.findOne({ orderId })
-            // .populate("address")
+            .populate({ path: 'delivery_address', model: Address_1.default })
+            .populate("userId", "name")
             .lean();
         if (!order) {
             return res.status(404).json({
@@ -191,6 +193,7 @@ const getOrderByIdController = async (req, res) => {
         }
         // ✅ Format for frontend
         const formattedOrder = {
+            customer_name: order.userId,
             orderId: order.orderId,
             orderType: order.orderType,
             order_status: order.order_status,

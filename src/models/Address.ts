@@ -57,7 +57,9 @@ const addressSchema = new Schema<IAddress>(
 );
 
 // 3️⃣ Create the model with type safety
-const AddressModel: Model<IAddress> =
-  mongoose.models.Address || mongoose.model<IAddress>("Address", addressSchema);
+const AddressModel: Model<IAddress> = mongoose.model<IAddress>(
+  "Address", 
+  addressSchema
+);
 
 export default AddressModel;

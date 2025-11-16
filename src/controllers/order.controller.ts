@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import OrderModel from "@models/Order";
-import { Schema } from "mongoose";
+import AddressModel from "@models/Address";
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -216,7 +216,8 @@ export const getOrderByIdController = async (
     }
 
     const order = await OrderModel.findOne({ orderId })
-      // .populate("address")
+      .populate({ path: 'delivery_address', model: AddressModel })
+      .populate("userId", "name")
       .lean();
 
     if (!order) {
@@ -229,6 +230,7 @@ export const getOrderByIdController = async (
 
     // ✅ Format for frontend
     const formattedOrder = {
+      customer_name: order.userId,
       orderId: order.orderId,
       orderType: order.orderType,
       order_status: order.order_status,
