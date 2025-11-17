@@ -12,10 +12,11 @@ const helmet_1 = __importDefault(require("helmet"));
 const product_routes_1 = __importDefault(require("./routes/product.routes"));
 const db_1 = require("./utils/db");
 const category_routes_1 = __importDefault(require("./routes/category.routes"));
-const user_routes_1 = __importDefault(require("./routes/user.routes"));
+// import userRoutes from './routes/user.routes';
 const subcategory_routes_1 = __importDefault(require("./routes/subcategory.routes"));
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
 const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes"));
+const admin_user_routes_1 = __importDefault(require("./routes/admin.user.routes"));
 // Middlewares
 const logger_middleware_1 = require("./middlewares/logger.middleware");
 const error_middleware_1 = require("./middlewares/error.middleware");
@@ -45,7 +46,7 @@ class App {
         this.app.use("/api/products", product_routes_1.default);
         this.app.use("/api/categories", category_routes_1.default);
         this.app.use("/api/subcategories", subcategory_routes_1.default);
-        this.app.use('/api/users', user_routes_1.default);
+        this.app.use('/api/admin/users', admin_user_routes_1.default);
         this.app.use("/api/orders", order_routes_1.default);
         this.app.use("/api/dashboard", dashboard_routes_1.default);
         this.app.use(notFound_middleware_1.notFoundHandler);

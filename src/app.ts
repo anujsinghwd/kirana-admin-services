@@ -8,10 +8,11 @@ import helmet from 'helmet';
 import productRoutes from "@routes/product.routes";
 import { connectDB } from "@utils/db";
 import categoryRoutes from "@routes/category.routes";
-import userRoutes from '@routes/user.routes';
+// import userRoutes from '@routes/user.routes';
 import subCategoryRoutes from '@routes/subcategory.routes';
 import orderRoutes from '@routes/order.routes';
 import dashboardRouter from "@routes/dashboard.routes";
+import adminUserRoutes from '@routes/admin.user.routes';
 
 
 // Middlewares
@@ -52,7 +53,7 @@ class App {
     this.app.use("/api/products", productRoutes);
     this.app.use("/api/categories", categoryRoutes);
     this.app.use("/api/subcategories", subCategoryRoutes);
-    this.app.use('/api/users', userRoutes);
+    this.app.use('/api/admin/users', adminUserRoutes);
     this.app.use("/api/orders", orderRoutes);
     this.app.use("/api/dashboard", dashboardRouter);
     this.app.use(notFoundHandler);
