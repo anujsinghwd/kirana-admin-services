@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 import { AppError } from "@utils/AppError";
 import config from "@config/config";
-import User from "@models/User";
+import AdminUser from "@models/AdminUser";
 import ERROR_MESSAGES from "@config/errorMessages";
 
 declare global {
@@ -27,7 +27,7 @@ export const protect = async (
 
   try {
     const decoded: any = jwt.verify(token, config.JWT_SECRET);
-    const user = await User.findById(decoded.id);
+    const user = await AdminUser.findById(decoded.id);
     if (!user) return next(new AppError(ERROR_MESSAGES.AUTH.USER_NOT_FOUND, 401));
     // attach user to request
     req.user = user;

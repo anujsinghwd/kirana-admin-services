@@ -7,7 +7,7 @@ exports.restrictTo = exports.protect = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const AppError_1 = require("../utils/AppError");
 const config_1 = __importDefault(require("../config/config"));
-const User_1 = __importDefault(require("../models/User"));
+const AdminUser_1 = __importDefault(require("../models/AdminUser"));
 const errorMessages_1 = __importDefault(require("../config/errorMessages"));
 const protect = async (req, res, next) => {
     let token;
@@ -18,7 +18,7 @@ const protect = async (req, res, next) => {
         return next(new AppError_1.AppError(errorMessages_1.default.AUTH.MISSING_TOKEN, 401));
     try {
         const decoded = jsonwebtoken_1.default.verify(token, config_1.default.JWT_SECRET);
-        const user = await User_1.default.findById(decoded.id);
+        const user = await AdminUser_1.default.findById(decoded.id);
         if (!user)
             return next(new AppError_1.AppError(errorMessages_1.default.AUTH.USER_NOT_FOUND, 401));
         // attach user to request
