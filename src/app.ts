@@ -13,6 +13,7 @@ import subCategoryRoutes from '@routes/subcategory.routes';
 import orderRoutes from '@routes/order.routes';
 import dashboardRouter from "@routes/dashboard.routes";
 import adminUserRoutes from '@routes/admin.user.routes';
+import inventoryRoutes from '@routes/inventory.routes';
 
 // Initialize event listeners
 import '@events/orderEventListeners';
@@ -59,6 +60,7 @@ class App {
     this.app.use('/api/admin/users', adminUserRoutes);
     this.app.use("/api/orders", orderRoutes);
     this.app.use("/api/dashboard", dashboardRouter);
+    this.app.use("/api/inventory", inventoryRoutes);
     this.app.use(notFoundHandler);
     this.app.use(globalErrorHandler);
 

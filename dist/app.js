@@ -17,6 +17,7 @@ const subcategory_routes_1 = __importDefault(require("./routes/subcategory.route
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
 const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes"));
 const admin_user_routes_1 = __importDefault(require("./routes/admin.user.routes"));
+const inventory_routes_1 = __importDefault(require("./routes/inventory.routes"));
 // Initialize event listeners
 require("./events/orderEventListeners");
 // Middlewares
@@ -51,6 +52,7 @@ class App {
         this.app.use('/api/admin/users', admin_user_routes_1.default);
         this.app.use("/api/orders", order_routes_1.default);
         this.app.use("/api/dashboard", dashboard_routes_1.default);
+        this.app.use("/api/inventory", inventory_routes_1.default);
         this.app.use(notFound_middleware_1.notFoundHandler);
         this.app.use(error_middleware_1.globalErrorHandler);
         this.app.get('/', (_, res) => res.send('✅ Kirana Admin API running'));

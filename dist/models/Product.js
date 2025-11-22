@@ -49,11 +49,15 @@ const ProductSchema = new mongoose_1.Schema({
                 enum: ["gm", "kg", "ml", "ltr", "piece", "packet", "box"],
                 required: true,
             },
-            price: { type: Number, required: true },
+            price: { type: Number, required: true }, // Selling price
+            buyingPrice: { type: Number, min: 0 }, // 🆕 Cost price
             offerPrice: { type: Number },
             discount: { type: Number, default: 0 },
-            stock: { type: Number, default: 0 },
+            stock: { type: Number, default: 0 }, // Available stock
+            damagedQty: { type: Number, default: 0, min: 0 }, // 🆕 Damaged stock
             sku: { type: String },
+            isReturnable: { type: Boolean, default: true }, // 🆕 Returnable flag
+            lastPurchaseDate: { type: Date }, // 🆕 Last purchase
             shelfLife: {
                 duration: { type: Number, default: null },
                 unit: { type: String, enum: ["days", "months", "years"], default: "months" },
@@ -67,10 +71,14 @@ const ProductSchema = new mongoose_1.Schema({
     isLoose: { type: Boolean, default: false },
     looseConfig: {
         unitType: { type: String, enum: ["gm", "kg", "ml", "ltr"] },
-        pricePerUnit: { type: Number },
+        pricePerUnit: { type: Number }, // Selling price
+        buyingPricePerUnit: { type: Number, min: 0 }, // 🆕 Cost price
         availableQty: { type: Number, default: 0 },
+        damagedQty: { type: Number, default: 0, min: 0 }, // 🆕 Damaged qty
         minQtyAllowed: { type: Number, default: 100 }, // e.g. 100g
         stepQty: { type: Number, default: 50 }, // increments
+        isReturnable: { type: Boolean, default: true }, // 🆕 Returnable
+        lastPurchaseDate: { type: Date }, // 🆕 Last purchase
     },
     published: { type: Boolean, default: true },
 }, { timestamps: true });
@@ -83,5 +91,29 @@ ProductSchema.pre("save", function (next) {
         return next(new Error("Loose items cannot have variant list. Either use variants OR looseConfig."));
     }
     next();
+});
+// 🆕 Virtual field for profit margin calculation
+ProductSchema.virtual('profitMargins').get(function () {
+    if (this.isLoose && this.looseConfig) {
+        const { pricePerUnit, buyingPricePerUnit } = this.looseConfig;
+        if (buyingPricePerUnit && buyingPricePerUnit > 0) {
+            return {
+                type: 'loose',
+                margin: ((pricePerUnit - buyingPricePerUnit) / buyingPricePerUnit * 100).toFixed(2),
+                marginAmount: (pricePerUnit - buyingPricePerUnit).toFixed(2)
+            };
+        }
+    }
+    else {
+        return this.variants.map(v => ({
+            unitValue: v.unitValue,
+            unitType: v.unitType,
+            margin: v.buyingPrice && v.buyingPrice > 0
+                ? ((v.price - v.buyingPrice) / v.buyingPrice * 100).toFixed(2)
+                : null,
+            marginAmount: v.buyingPrice ? (v.price - v.buyingPrice).toFixed(2) : null
+        }));
+    }
+    return null;
 });
 exports.default = mongoose_1.default.model("Product", ProductSchema);

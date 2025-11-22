@@ -49,3 +49,6 @@ export const restrictTo = (...roles: string[]) => {
     next();
   };
 };
+
+// Alias for admin authentication (same as protect)
+export const authenticateAdmin = protect;

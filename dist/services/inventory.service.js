@@ -5,6 +5,14 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.updateProductQuantityOnDelivery = updateProductQuantityOnDelivery;
 exports.restoreProductQuantityOnCancellation = restoreProductQuantityOnCancellation;
+exports.recordPurchase = recordPurchase;
+exports.recordBulkPurchase = recordBulkPurchase;
+exports.createTransaction = createTransaction;
+exports.markAsDamaged = markAsDamaged;
+exports.processReturn = processReturn;
+exports.getInventoryStatus = getInventoryStatus;
+exports.getTransactionHistory = getTransactionHistory;
+exports.calculateProfitReport = calculateProfitReport;
 const Product_1 = __importDefault(require("../models/Product"));
 const mongoose_1 = __importDefault(require("mongoose"));
 /**
@@ -257,4 +265,374 @@ async function restoreProductQuantityOnCancellation(orderId, items) {
     const successCount = results.filter((r) => r.success).length;
     console.log(`✅ [Inventory] Restored ${successCount}/${items.length} items for order ${orderId}`);
     return results;
+}
+/* =====================================================
+ * 🆕 ADVANCED INVENTORY MANAGEMENT FUNCTIONS
+ * ===================================================== */
+const Inventory_1 = require("../models/Inventory");
+/**
+ * Record a new purchase/restocking event
+ */
+async function recordPurchase(data) {
+    try {
+        const { productId, variantIndex = -1, quantity, buyingPrice, supplier, supplierContact, invoiceNumber, expiryDate, notes, performedBy, } = data;
+        // Create purchase record
+        const purchaseRecord = await Inventory_1.PurchaseRecordModel.create({
+            productId: new mongoose_1.default.Types.ObjectId(productId),
+            variantIndex,
+            purchaseDate: new Date(),
+            buyingPrice,
+            quantity,
+            supplier,
+            supplierContact,
+            invoiceNumber,
+            expiryDate,
+            notes,
+        });
+        // Update product buying price and last purchase date
+        const product = await Product_1.default.findById(productId);
+        if (!product) {
+            return { success: false, error: "Product not found" };
+        }
+        if (variantIndex >= 0 && variantIndex < product.variants.length) {
+            // Update variant
+            await Product_1.default.findByIdAndUpdate(productId, {
+                [`variants.${variantIndex}.buyingPrice`]: buyingPrice,
+                [`variants.${variantIndex}.lastPurchaseDate`]: new Date(),
+                $inc: { [`variants.${variantIndex}.stock`]: quantity },
+            });
+        }
+        else if (product.isLoose) {
+            // Update loose config
+            await Product_1.default.findByIdAndUpdate(productId, {
+                "looseConfig.buyingPricePerUnit": buyingPrice,
+                "looseConfig.lastPurchaseDate": new Date(),
+                $inc: { "looseConfig.availableQty": quantity },
+            });
+        }
+        // Create inventory transaction
+        await createTransaction({
+            productId,
+            variantIndex,
+            transactionType: "purchase",
+            quantity,
+            buyingPrice,
+            performedBy,
+            notes: `Purchase: ${supplier || 'Unknown supplier'} - Invoice: ${invoiceNumber || 'N/A'}`,
+        });
+        // Update inventory status
+        await updateInventoryStatus(productId, variantIndex);
+        console.log(`✅ [Inventory] Purchase recorded: ${quantity} units @ ${buyingPrice} each`);
+        return { success: true, purchaseRecord };
+    }
+    catch (error) {
+        console.error(`❌ [Inventory] Error recording purchase:`, error);
+        return { success: false, error: error.message };
+    }
+}
+/**
+ * Record multiple purchases in a single transaction
+ */
+async function recordBulkPurchase(data) {
+    const { items, supplier, supplierContact, invoiceNumber, notes, performedBy } = data;
+    const results = [];
+    let successCount = 0;
+    console.log(`📦 [Inventory] Processing bulk purchase of ${items.length} items`);
+    for (const item of items) {
+        // Combine item notes with invoice notes
+        const itemNotes = [item.notes, notes].filter(Boolean).join(" | ");
+        const result = await recordPurchase({
+            ...item,
+            notes: itemNotes,
+            supplier,
+            supplierContact,
+            invoiceNumber,
+            performedBy,
+        });
+        if (result.success) {
+            successCount++;
+        }
+        results.push({
+            productId: item.productId,
+            variantIndex: item.variantIndex,
+            success: result.success,
+            error: result.error,
+            purchaseRecord: result.purchaseRecord,
+        });
+    }
+    console.log(`✅ [Inventory] Bulk purchase completed: ${successCount}/${items.length} successful`);
+    return {
+        success: successCount > 0, // Consider success if at least one item succeeded
+        results,
+    };
+}
+/**
+ * Create an inventory transaction log
+ */
+async function createTransaction(data) {
+    try {
+        const { productId, variantIndex = -1, transactionType, quantity, buyingPrice, sellingPrice, orderId, reason, performedBy, notes, } = data;
+        // Calculate profit if both prices available
+        let profitAmount;
+        if (buyingPrice && sellingPrice) {
+            profitAmount = sellingPrice - buyingPrice;
+        }
+        const transaction = await Inventory_1.InventoryTransactionModel.create({
+            productId: new mongoose_1.default.Types.ObjectId(productId),
+            variantIndex,
+            transactionType,
+            quantity,
+            date: new Date(),
+            buyingPrice,
+            sellingPrice,
+            profitAmount,
+            orderId: orderId ? new mongoose_1.default.Types.ObjectId(orderId) : undefined,
+            reason,
+            performedBy: performedBy ? new mongoose_1.default.Types.ObjectId(performedBy) : undefined,
+            notes,
+        });
+        console.log(`✅ [Inventory] Transaction logged: ${transactionType} - ${quantity} units`);
+        return { success: true, transaction };
+    }
+    catch (error) {
+        console.error(`❌ [Inventory] Error creating transaction:`, error);
+        return { success: false, error: error.message };
+    }
+}
+/**
+ * Mark items as damaged
+ */
+async function markAsDamaged(data) {
+    try {
+        const { productId, variantIndex = -1, quantity, reason, performedBy } = data;
+        const product = await Product_1.default.findById(productId);
+        if (!product) {
+            return { success: false, error: "Product not found" };
+        }
+        if (variantIndex >= 0 && variantIndex < product.variants.length) {
+            // Variant product
+            const variant = product.variants[variantIndex];
+            if (variant.stock < quantity) {
+                return { success: false, error: "Insufficient stock to mark as damaged" };
+            }
+            await Product_1.default.findByIdAndUpdate(productId, {
+                $inc: {
+                    [`variants.${variantIndex}.stock`]: -quantity,
+                    [`variants.${variantIndex}.damagedQty`]: quantity,
+                },
+            });
+        }
+        else if (product.isLoose && product.looseConfig) {
+            // Loose product
+            if (product.looseConfig.availableQty < quantity) {
+                return { success: false, error: "Insufficient stock to mark as damaged" };
+            }
+            await Product_1.default.findByIdAndUpdate(productId, {
+                $inc: {
+                    "looseConfig.availableQty": -quantity,
+                    "looseConfig.damagedQty": quantity,
+                },
+            });
+        }
+        // Create transaction
+        await createTransaction({
+            productId,
+            variantIndex,
+            transactionType: "damage",
+            quantity: -quantity, // Negative quantity for stock reduction
+            reason,
+            performedBy,
+        });
+        // Update inventory status
+        await updateInventoryStatus(productId, variantIndex);
+        console.log(`✅ [Inventory] Marked ${quantity} units as damaged`);
+        return { success: true };
+    }
+    catch (error) {
+        console.error(`❌ [Inventory] Error marking as damaged:`, error);
+        return { success: false, error: error.message };
+    }
+}
+/**
+ * Process a product return
+ */
+async function processReturn(data) {
+    try {
+        const { productId, variantIndex = -1, quantity, orderId, reason, performedBy, restockable = true, } = data;
+        const product = await Product_1.default.findById(productId);
+        if (!product) {
+            return { success: false, error: "Product not found" };
+        }
+        if (variantIndex >= 0 && variantIndex < product.variants.length) {
+            // Variant product
+            if (restockable) {
+                await Product_1.default.findByIdAndUpdate(productId, {
+                    $inc: { [`variants.${variantIndex}.stock`]: quantity },
+                });
+            }
+            else {
+                await Product_1.default.findByIdAndUpdate(productId, {
+                    $inc: { [`variants.${variantIndex}.damagedQty`]: quantity },
+                });
+            }
+        }
+        else if (product.isLoose) {
+            // Loose product
+            if (restockable) {
+                await Product_1.default.findByIdAndUpdate(productId, {
+                    $inc: { "looseConfig.availableQty": quantity },
+                });
+            }
+            else {
+                await Product_1.default.findByIdAndUpdate(productId, {
+                    $inc: { "looseConfig.damagedQty": quantity },
+                });
+            }
+        }
+        // Create transaction
+        await createTransaction({
+            productId,
+            variantIndex,
+            transactionType: "return",
+            quantity,
+            orderId,
+            reason,
+            performedBy,
+            notes: restockable ? "Returned and restocked" : "Returned but damaged",
+        });
+        // Update inventory status
+        await updateInventoryStatus(productId, variantIndex);
+        console.log(`✅ [Inventory] Processed return: ${quantity} units`);
+        return { success: true };
+    }
+    catch (error) {
+        console.error(`❌ [Inventory] Error processing return:`, error);
+        return { success: false, error: error.message };
+    }
+}
+/**
+ * Update or create inventory status for a product/variant
+ */
+async function updateInventoryStatus(productId, variantIndex = -1) {
+    try {
+        const product = await Product_1.default.findById(productId);
+        if (!product)
+            return;
+        let totalStock = 0;
+        let damagedStock = 0;
+        let buyingPrice = 0;
+        let lastPurchaseDate;
+        let isReturnable = true;
+        if (variantIndex >= 0 && variantIndex < product.variants.length) {
+            const variant = product.variants[variantIndex];
+            totalStock = variant.stock + (variant.damagedQty || 0);
+            damagedStock = variant.damagedQty || 0;
+            buyingPrice = variant.buyingPrice || 0;
+            lastPurchaseDate = variant.lastPurchaseDate;
+            isReturnable = variant.isReturnable !== false;
+        }
+        else if (product.isLoose && product.looseConfig) {
+            totalStock = product.looseConfig.availableQty + (product.looseConfig.damagedQty || 0);
+            damagedStock = product.looseConfig.damagedQty || 0;
+            buyingPrice = product.looseConfig.buyingPricePerUnit || 0;
+            lastPurchaseDate = product.looseConfig.lastPurchaseDate;
+            isReturnable = product.looseConfig.isReturnable !== false;
+        }
+        const availableStock = totalStock - damagedStock;
+        // Upsert inventory status
+        await Inventory_1.InventoryStatusModel.findOneAndUpdate({
+            productId: new mongoose_1.default.Types.ObjectId(productId),
+            variantIndex,
+        }, {
+            totalStock,
+            availableStock,
+            damagedStock,
+            reservedStock: 0, // TODO: Implement order reservation
+            averageBuyingPrice: buyingPrice,
+            lastPurchaseDate,
+            lastPurchasePrice: buyingPrice,
+            isReturnable,
+        }, { upsert: true, new: true });
+    }
+    catch (error) {
+        console.error(`❌ [Inventory] Error updating inventory status:`, error);
+    }
+}
+/**
+ * Get inventory status for a product
+ */
+async function getInventoryStatus(productId, variantIndex) {
+    try {
+        const query = { productId: new mongoose_1.default.Types.ObjectId(productId) };
+        if (variantIndex !== undefined) {
+            query.variantIndex = variantIndex;
+        }
+        const statuses = await Inventory_1.InventoryStatusModel.find(query).lean();
+        return statuses;
+    }
+    catch (error) {
+        console.error(`❌ [Inventory] Error fetching inventory status:`, error);
+        return [];
+    }
+}
+/**
+ * Get transaction history
+ */
+async function getTransactionHistory(filters) {
+    try {
+        const query = {};
+        if (filters.productId) {
+            query.productId = new mongoose_1.default.Types.ObjectId(filters.productId);
+        }
+        if (filters.transactionType) {
+            query.transactionType = filters.transactionType;
+        }
+        if (filters.startDate || filters.endDate) {
+            query.date = {};
+            if (filters.startDate)
+                query.date.$gte = filters.startDate;
+            if (filters.endDate)
+                query.date.$lte = filters.endDate;
+        }
+        const transactions = await Inventory_1.InventoryTransactionModel.find(query)
+            .sort({ date: -1 })
+            .limit(filters.limit || 100)
+            .populate("productId", "name images")
+            .populate("performedBy", "name email")
+            .lean();
+        return transactions;
+    }
+    catch (error) {
+        console.error(`❌ [Inventory] Error fetching transaction history:`, error);
+        return [];
+    }
+}
+/**
+ * Calculate profit for a given period
+ */
+async function calculateProfitReport(startDate, endDate) {
+    try {
+        const transactions = await Inventory_1.InventoryTransactionModel.find({
+            transactionType: "sale",
+            date: { $gte: startDate, $lte: endDate },
+            profitAmount: { $exists: true, $ne: null },
+        }).lean();
+        const totalRevenue = transactions.reduce((sum, t) => sum + (t.sellingPrice || 0) * Math.abs(t.quantity), 0);
+        const totalCost = transactions.reduce((sum, t) => sum + (t.buyingPrice || 0) * Math.abs(t.quantity), 0);
+        const totalProfit = transactions.reduce((sum, t) => sum + (t.profitAmount || 0) * Math.abs(t.quantity), 0);
+        const profitMargin = totalRevenue > 0 ? (totalProfit / totalRevenue) * 100 : 0;
+        return {
+            startDate,
+            endDate,
+            totalRevenue: totalRevenue.toFixed(2),
+            totalCost: totalCost.toFixed(2),
+            totalProfit: totalProfit.toFixed(2),
+            profitMargin: profitMargin.toFixed(2) + "%",
+            transactionCount: transactions.length,
+        };
+    }
+    catch (error) {
+        console.error(`❌ [Inventory] Error calculating profit report:`, error);
+        return null;
+    }
 }

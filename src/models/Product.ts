@@ -11,21 +11,29 @@ export interface IShelfLife {
 export interface IProductVariant {
   unitValue: number;
   unitType: string;
-  price: number;
+  price: number;              // Selling price (MRP)
+  buyingPrice?: number;       // 🆕 Purchase/cost price
   offerPrice?: number;
   discount?: number;
-  stock: number;
+  stock: number;              // Available stock for sale
+  damagedQty?: number;        // 🆕 Damaged inventory count
   sku?: string;
+  isReturnable?: boolean;     // 🆕 Can customers return this variant?
+  lastPurchaseDate?: Date;    // 🆕 Last restocking date
   shelfLife?: IShelfLife;
 }
 
 /** ⚖️ Loose Config Interface */
 export interface ILooseConfig {
   unitType: "gm" | "kg" | "ml" | "ltr";  // base selling unit
-  pricePerUnit: number;                  // price per 1 unit (e.g. ₹50/kg)
+  pricePerUnit: number;                  // selling price per 1 unit (e.g. ₹50/kg)
+  buyingPricePerUnit?: number;           // 🆕 purchase cost per 1 unit
   availableQty: number;                  // total available stock in same unit
+  damagedQty?: number;                   // 🆕 damaged loose item quantity
   minQtyAllowed?: number;                // e.g. 50g or 100ml
   stepQty?: number;                      // step size (50g increments)
+  isReturnable?: boolean;                // 🆕 can customers return loose items?
+  lastPurchaseDate?: Date;               // 🆕 last restocking date
 }
 
 export interface IProductDTO extends Document {
@@ -60,11 +68,15 @@ const ProductSchema = new Schema<IProduct>(
           enum: ["gm", "kg", "ml", "ltr", "piece", "packet", "box"],
           required: true,
         },
-        price: { type: Number, required: true },
+        price: { type: Number, required: true },        // Selling price
+        buyingPrice: { type: Number, min: 0 },           // 🆕 Cost price
         offerPrice: { type: Number },
         discount: { type: Number, default: 0 },
-        stock: { type: Number, default: 0 },
+        stock: { type: Number, default: 0 },            // Available stock
+        damagedQty: { type: Number, default: 0, min: 0 },// 🆕 Damaged stock
         sku: { type: String },
+        isReturnable: { type: Boolean, default: true },  // 🆕 Returnable flag
+        lastPurchaseDate: { type: Date },                // 🆕 Last purchase
         shelfLife: {
           duration: { type: Number, default: null },
           unit: { type: String, enum: ["days", "months", "years"], default: "months" },
@@ -79,10 +91,14 @@ const ProductSchema = new Schema<IProduct>(
     isLoose: { type: Boolean, default: false },
     looseConfig: {
       unitType: { type: String, enum: ["gm", "kg", "ml", "ltr"] },
-      pricePerUnit: { type: Number },
+      pricePerUnit: { type: Number },                    // Selling price
+      buyingPricePerUnit: { type: Number, min: 0 },      // 🆕 Cost price
       availableQty: { type: Number, default: 0 },
-      minQtyAllowed: { type: Number, default: 100 }, // e.g. 100g
-      stepQty: { type: Number, default: 50 }, // increments
+      damagedQty: { type: Number, default: 0, min: 0 },  // 🆕 Damaged qty
+      minQtyAllowed: { type: Number, default: 100 },     // e.g. 100g
+      stepQty: { type: Number, default: 50 },            // increments
+      isReturnable: { type: Boolean, default: true },    // 🆕 Returnable
+      lastPurchaseDate: { type: Date },                  // 🆕 Last purchase
     },
 
     published: { type: Boolean, default: true },
@@ -102,6 +118,30 @@ ProductSchema.pre("save", function (next) {
     );
   }
   next();
+});
+
+// 🆕 Virtual field for profit margin calculation
+ProductSchema.virtual('profitMargins').get(function(this: IProduct) {
+  if (this.isLoose && this.looseConfig) {
+    const { pricePerUnit, buyingPricePerUnit } = this.looseConfig;
+    if (buyingPricePerUnit && buyingPricePerUnit > 0) {
+      return {
+        type: 'loose',
+        margin: ((pricePerUnit - buyingPricePerUnit) / buyingPricePerUnit * 100).toFixed(2),
+        marginAmount: (pricePerUnit - buyingPricePerUnit).toFixed(2)
+      };
+    }
+  } else {
+    return this.variants.map(v => ({
+      unitValue: v.unitValue,
+      unitType: v.unitType,
+      margin: v.buyingPrice && v.buyingPrice > 0 
+        ? ((v.price - v.buyingPrice) / v.buyingPrice * 100).toFixed(2) 
+        : null,
+      marginAmount: v.buyingPrice ? (v.price - v.buyingPrice).toFixed(2) : null
+    }));
+  }
+  return null;
 });
 
 export default mongoose.model<IProduct>("Product", ProductSchema);
