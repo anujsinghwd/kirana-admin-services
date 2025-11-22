@@ -108,36 +108,83 @@ async function updateLooseItemQuantity(productId, quantity) {
 }
 /**
  * Update variant stock using atomic operation
+ * If multiple variants have the same unitType and unitValue,
+ * distributes the quantity deduction across them sequentially
  */
 async function updateVariantStock(productId, variantId, quantity) {
     try {
-        // Find the variant index first
+        // Find the product and variant
         const product = await Product_1.default.findById(productId);
         if (!product) {
             console.error(`❌ [Inventory] Product ${productId} not found`);
             return { success: false, error: "Product not found" };
         }
-        const variantIndex = product.variants.findIndex((v) => v._id?.toString() === variantId);
-        if (variantIndex === -1) {
+        const primaryVariantIndex = product.variants.findIndex((v) => v._id?.toString() === variantId);
+        if (primaryVariantIndex === -1) {
             console.error(`❌ [Inventory] Variant ${variantId} not found in product ${productId}`);
             return { success: false, error: "Variant not found" };
         }
-        const currentStock = product.variants[variantIndex].stock;
-        // Update using atomic operation
-        const updatedProduct = await Product_1.default.findOneAndUpdate({
-            _id: new mongoose_1.default.Types.ObjectId(productId),
-            [`variants.${variantIndex}.stock`]: { $gte: quantity },
-        }, {
-            $inc: { [`variants.${variantIndex}.stock`]: -quantity },
-        }, { new: true });
-        if (!updatedProduct) {
-            console.warn(`⚠️ [Inventory] Insufficient stock for variant ${variantId}. Required: ${quantity}, Available: ${currentStock}`);
-            // Still deduct but allow negative stock (log warning)
-            await Product_1.default.findByIdAndUpdate(productId, { $inc: { [`variants.${variantIndex}.stock`]: -quantity } });
-            return { success: true, error: `Warning: Stock went negative (was ${currentStock})` };
+        const primaryVariant = product.variants[primaryVariantIndex];
+        const { unitType, unitValue } = primaryVariant;
+        // Find all variants with the same unitType and unitValue
+        const matchingVariants = product.variants
+            .map((variant, index) => ({
+            variant,
+            index,
+            id: variant._id?.toString(),
+        }))
+            .filter((v) => v.variant.unitType === unitType &&
+            v.variant.unitValue === unitValue &&
+            v.variant.stock > 0 // Only consider variants with available stock
+        )
+            .sort((a, b) => {
+            // Sort: primary variant first, then by stock availability
+            if (a.id === variantId)
+                return -1;
+            if (b.id === variantId)
+                return 1;
+            return 0;
+        });
+        if (matchingVariants.length === 0) {
+            console.warn(`⚠️ [Inventory] No variants with stock available for ${unitValue}${unitType}`);
+            // Still try to deduct from the primary variant (will go negative)
+            await Product_1.default.findByIdAndUpdate(productId, { $inc: { [`variants.${primaryVariantIndex}.stock`]: -quantity } });
+            return { success: true, error: `Warning: Stock went negative (no stock available)` };
         }
-        const newStock = updatedProduct.variants[variantIndex].stock;
-        console.log(`✅ [Inventory] Variant ${variantId}: Deducted ${quantity}, New stock: ${newStock}`);
+        let remainingQuantity = quantity;
+        const deductions = [];
+        // Deduct from matching variants sequentially
+        for (const { variant, index, id } of matchingVariants) {
+            if (remainingQuantity <= 0)
+                break;
+            const availableStock = variant.stock;
+            const toDeduct = Math.min(remainingQuantity, availableStock);
+            // Perform atomic deduction
+            await Product_1.default.findByIdAndUpdate(productId, { $inc: { [`variants.${index}.stock`]: -toDeduct } });
+            deductions.push({
+                index,
+                id,
+                deducted: toDeduct,
+                before: availableStock,
+                after: availableStock - toDeduct,
+            });
+            remainingQuantity -= toDeduct;
+            console.log(`✅ [Inventory] Variant ${id} (${unitValue}${unitType}): Deducted ${toDeduct}, Stock: ${availableStock} → ${availableStock - toDeduct}`);
+        }
+        // If there's still remaining quantity, deduct from the primary variant (will go negative)
+        if (remainingQuantity > 0) {
+            const primaryDeduction = deductions.find(d => d.id === variantId);
+            const currentStock = primaryDeduction ? primaryDeduction.after : primaryVariant.stock;
+            await Product_1.default.findByIdAndUpdate(productId, { $inc: { [`variants.${primaryVariantIndex}.stock`]: -remainingQuantity } });
+            console.warn(`⚠️ [Inventory] Insufficient total stock. Deducted additional ${remainingQuantity} from variant ${variantId} (went negative)`);
+            return {
+                success: true,
+                error: `Warning: Deducted ${quantity} total, but ${remainingQuantity} caused negative stock`
+            };
+        }
+        // Log summary
+        const totalDeducted = deductions.reduce((sum, d) => sum + d.deducted, 0);
+        console.log(`✅ [Inventory] Successfully distributed ${totalDeducted} units of ${unitValue}${unitType} across ${deductions.length} variant(s)`);
         return { success: true };
     }
     catch (error) {

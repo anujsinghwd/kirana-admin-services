@@ -144,6 +144,8 @@ async function updateLooseItemQuantity(
 
 /**
  * Update variant stock using atomic operation
+ * If multiple variants have the same unitType and unitValue, 
+ * distributes the quantity deduction across them sequentially
  */
 async function updateVariantStock(
   productId: string,
@@ -151,7 +153,7 @@ async function updateVariantStock(
   quantity: number
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Find the variant index first
+    // Find the product and variant
     const product = await ProductModel.findById(productId);
     
     if (!product) {
@@ -159,47 +161,106 @@ async function updateVariantStock(
       return { success: false, error: "Product not found" };
     }
 
-    const variantIndex = product.variants.findIndex(
+    const primaryVariantIndex = product.variants.findIndex(
       (v: any) => v._id?.toString() === variantId
     );
 
-    if (variantIndex === -1) {
+    if (primaryVariantIndex === -1) {
       console.error(`❌ [Inventory] Variant ${variantId} not found in product ${productId}`);
       return { success: false, error: "Variant not found" };
     }
 
-    const currentStock = product.variants[variantIndex].stock;
+    const primaryVariant = product.variants[primaryVariantIndex];
+    const { unitType, unitValue } = primaryVariant;
 
-    // Update using atomic operation
-    const updatedProduct = await ProductModel.findOneAndUpdate(
-      {
-        _id: new mongoose.Types.ObjectId(productId),
-        [`variants.${variantIndex}.stock`]: { $gte: quantity },
-      },
-      {
-        $inc: { [`variants.${variantIndex}.stock`]: -quantity },
-      },
-      { new: true }
-    );
+    // Find all variants with the same unitType and unitValue
+    const matchingVariants = product.variants
+      .map((variant: any, index: number) => ({
+        variant,
+        index,
+        id: variant._id?.toString(),
+      }))
+      .filter((v: any) => 
+        v.variant.unitType === unitType && 
+        v.variant.unitValue === unitValue &&
+        v.variant.stock > 0 // Only consider variants with available stock
+      )
+      .sort((a: any, b: any) => {
+        // Sort: primary variant first, then by stock availability
+        if (a.id === variantId) return -1;
+        if (b.id === variantId) return 1;
+        return 0;
+      });
 
-    if (!updatedProduct) {
+    if (matchingVariants.length === 0) {
       console.warn(
-        `⚠️ [Inventory] Insufficient stock for variant ${variantId}. Required: ${quantity}, Available: ${currentStock}`
+        `⚠️ [Inventory] No variants with stock available for ${unitValue}${unitType}`
       );
-      
-      // Still deduct but allow negative stock (log warning)
+      // Still try to deduct from the primary variant (will go negative)
       await ProductModel.findByIdAndUpdate(
         productId,
-        { $inc: { [`variants.${variantIndex}.stock`]: -quantity } }
+        { $inc: { [`variants.${primaryVariantIndex}.stock`]: -quantity } }
       );
-      
-      return { success: true, error: `Warning: Stock went negative (was ${currentStock})` };
+      return { success: true, error: `Warning: Stock went negative (no stock available)` };
     }
 
-    const newStock = updatedProduct.variants[variantIndex].stock;
+    let remainingQuantity = quantity;
+    const deductions: Array<{ index: number; id: string; deducted: number; before: number; after: number }> = [];
+
+    // Deduct from matching variants sequentially
+    for (const { variant, index, id } of matchingVariants) {
+      if (remainingQuantity <= 0) break;
+
+      const availableStock = variant.stock;
+      const toDeduct = Math.min(remainingQuantity, availableStock);
+
+      // Perform atomic deduction
+      await ProductModel.findByIdAndUpdate(
+        productId,
+        { $inc: { [`variants.${index}.stock`]: -toDeduct } }
+      );
+
+      deductions.push({
+        index,
+        id,
+        deducted: toDeduct,
+        before: availableStock,
+        after: availableStock - toDeduct,
+      });
+
+      remainingQuantity -= toDeduct;
+
+      console.log(
+        `✅ [Inventory] Variant ${id} (${unitValue}${unitType}): Deducted ${toDeduct}, Stock: ${availableStock} → ${availableStock - toDeduct}`
+      );
+    }
+
+    // If there's still remaining quantity, deduct from the primary variant (will go negative)
+    if (remainingQuantity > 0) {
+      const primaryDeduction = deductions.find(d => d.id === variantId);
+      const currentStock = primaryDeduction ? primaryDeduction.after : primaryVariant.stock;
+      
+      await ProductModel.findByIdAndUpdate(
+        productId,
+        { $inc: { [`variants.${primaryVariantIndex}.stock`]: -remainingQuantity } }
+      );
+
+      console.warn(
+        `⚠️ [Inventory] Insufficient total stock. Deducted additional ${remainingQuantity} from variant ${variantId} (went negative)`
+      );
+
+      return { 
+        success: true, 
+        error: `Warning: Deducted ${quantity} total, but ${remainingQuantity} caused negative stock` 
+      };
+    }
+
+    // Log summary
+    const totalDeducted = deductions.reduce((sum, d) => sum + d.deducted, 0);
     console.log(
-      `✅ [Inventory] Variant ${variantId}: Deducted ${quantity}, New stock: ${newStock}`
+      `✅ [Inventory] Successfully distributed ${totalDeducted} units of ${unitValue}${unitType} across ${deductions.length} variant(s)`
     );
+
     return { success: true };
   } catch (error: any) {
     console.error(`❌ [Inventory] Error updating variant ${variantId}:`, error);
