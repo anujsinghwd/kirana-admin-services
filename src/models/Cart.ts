@@ -10,7 +10,7 @@ export interface ICartProduct extends Document {
 
   /** ✅ Quantity info */
   quantity: number; // For variants OR loose
-  unitType?: "gm" | "kg" | "ml" | "ltr"; // For loose items only
+  unitType?: "gm" | "kg" | "ml" | "ltr" | "piece" | "packet" | "box"; // For loose items only
 
   /** ✅ Loose item info */
   isLooseItem?: boolean; // Marks this entry as a loose item
@@ -60,7 +60,7 @@ const cartProductSchema = new Schema<ICartProduct>(
     },
     unitType: {
       type: String,
-      enum: ["gm", "kg", "ml", "ltr"],
+      enum: ["gm", "kg", "ml", "ltr", "piece", "packet", "box"],
       required: function (this: ICartProduct) {
         return this.isLooseItem;
       },

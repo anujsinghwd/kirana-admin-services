@@ -68,7 +68,7 @@ const cartProductSchema = new mongoose_1.Schema({
     },
     unitType: {
         type: String,
-        enum: ["gm", "kg", "ml", "ltr"],
+        enum: ["gm", "kg", "ml", "ltr", "piece", "packet", "box"],
         required: function () {
             return this.isLooseItem;
         },

@@ -27,7 +27,7 @@ export interface IOrderItem {
  * 🔹 Order Status & Tracking
  * --------------------------------------------- */
 export interface IOrderTracking {
-  status: "Pending" | "Processing" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled" | "Takeout Ready" | "Completed";
+  status: "Pending" | "Confirmed" | "Preparing" | "Ready" | "Out for Delivery" | "Delivered" | "Cancelled" | "Rejected";
   timestamp: Date;
   note?: string;
   updatedBy?: mongoose.Types.ObjectId; // Admin or delivery staff
@@ -64,7 +64,7 @@ export interface IOrder extends Document {
   invoice_receipt?: string;
 
   // CRM Fields
-  order_status: "Pending" | "Processing" | "Packed" | "Out for Delivery" | "Delivered" | "Cancelled" | "Completed" | "Takeout Ready";
+  order_status: "Pending" | "Confirmed" | "Preparing" | "Ready" | "Out for Delivery" | "Delivered" | "Cancelled" | "Rejected";
   tracking: IOrderTracking[];
   assigned_personnel: IAssignedPersonnel[];
 
@@ -119,13 +119,13 @@ const trackingSchema = new Schema<IOrderTracking>(
       type: String,
       enum: [
         "Pending",
-        "Processing",
-        "Packed",
+        "Confirmed",
+        "Preparing",
+        "Ready",
         "Out for Delivery",
         "Delivered",
         "Cancelled",
-        "Takeout Ready",
-        "Completed",
+        "Rejected",
       ],
       default: "Pending",
     },
@@ -204,16 +204,7 @@ const orderSchema = new Schema<IOrder>(
     // CRM / Tracking Fields
     order_status: {
       type: String,
-      enum: [
-        "Pending",
-        "Processing",
-        "Packed",
-        "Out for Delivery",
-        "Delivered",
-        "Cancelled",
-        "Completed",
-        "Takeout Ready",
-      ],
+      enum: ["Pending", "Confirmed", "Preparing", "Ready", "Out for Delivery", "Delivered", "Cancelled", "Rejected"],
       default: "Pending",
     },
     tracking: { type: [trackingSchema], default: [] },

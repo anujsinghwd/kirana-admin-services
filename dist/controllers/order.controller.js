@@ -6,18 +6,19 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.assignPersonnelController = exports.updateOrderStatusController = exports.getOrderByIdController = exports.getOrderDetailsController = void 0;
 const Order_1 = __importDefault(require("../models/Order"));
 const Address_1 = __importDefault(require("../models/Address"));
+const User_1 = __importDefault(require("../models/User"));
 /**
  * Allowed statuses - must match OrderModel enums
  */
 const ALLOWED_STATUSES = [
     "Pending",
-    "Processing",
-    "Packed",
+    "Confirmed",
+    "Preparing",
+    "Ready",
     "Out for Delivery",
     "Delivered",
     "Cancelled",
-    "Completed",
-    "Takeout Ready",
+    "Rejected",
 ];
 /* ---------------------------------------------
  * 🧾 Get All Orders for User
@@ -182,7 +183,7 @@ const getOrderByIdController = async (req, res) => {
         }
         const order = await Order_1.default.findOne({ orderId })
             .populate({ path: 'delivery_address', model: Address_1.default })
-            .populate("userId", "name")
+            .populate({ path: 'userId', model: User_1.default, select: 'name' })
             .lean();
         if (!order) {
             return res.status(404).json({
@@ -263,7 +264,7 @@ const updateOrderStatusController = async (req, res) => {
             order_status: status,
             $push: { tracking: trackingEntry },
         };
-        if (status === "Delivered" || status === "Completed") {
+        if (status === "Delivered") {
             update.completedAt = new Date();
         }
         if (status === "Cancelled") {

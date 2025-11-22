@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import OrderModel from "@models/Order";
 import AddressModel from "@models/Address";
+import User from "@models/User";
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -10,14 +11,14 @@ interface AuthenticatedRequest extends Request {
  * Allowed statuses - must match OrderModel enums
  */
 const ALLOWED_STATUSES = [
-  "Pending",
-  "Processing",
-  "Packed",
-  "Out for Delivery",
-  "Delivered",
-  "Cancelled",
-  "Completed",
-  "Takeout Ready",
+      "Pending",
+      "Confirmed",
+      "Preparing",
+      "Ready",
+      "Out for Delivery",
+      "Delivered",
+      "Cancelled",
+      "Rejected",
 ] as const;
 type OrderStatus = typeof ALLOWED_STATUSES[number];
 
@@ -217,7 +218,7 @@ export const getOrderByIdController = async (
 
     const order = await OrderModel.findOne({ orderId })
       .populate({ path: 'delivery_address', model: AddressModel })
-      .populate("userId", "name")
+      .populate({ path: 'userId', model: User, select: 'name' })
       .lean();
 
     if (!order) {
@@ -309,7 +310,7 @@ export const updateOrderStatusController = async (
       $push: { tracking: trackingEntry },
     };
 
-    if (status === "Delivered" || status === "Completed") {
+    if (status === "Delivered") {
       update.completedAt = new Date();
     }
 
