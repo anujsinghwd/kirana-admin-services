@@ -1,7 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.orderEventEmitter = exports.OrderEventType = void 0;
-const events_1 = require("../events");
+const node_events_1 = require("node:events");
 /**
  * Order Event Types
  */
@@ -15,7 +15,7 @@ var OrderEventType;
 /**
  * Typed Event Emitter for Order Events
  */
-class OrderEventEmitter extends events_1.EventEmitter {
+class OrderEventEmitter extends node_events_1.EventEmitter {
     emitStatusChanged(payload) {
         return this.emit(OrderEventType.STATUS_CHANGED, payload);
     }

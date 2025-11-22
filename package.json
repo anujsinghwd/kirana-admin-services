@@ -5,6 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "start": "nodemon src/server.ts",
+    "start:prod": "nodemon dist/server.js",
     "dev": "ts-node-dev --respawn --transpile-only -r tsconfig-paths/register src/server.ts",
     "build": "rimraf dist && tsc && tsc-alias",
     "ts.check": "tsc --project tsconfig.json",
