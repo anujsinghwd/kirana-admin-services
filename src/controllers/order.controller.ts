@@ -219,7 +219,7 @@ export const getOrderByIdController = async (
 
     const order = await OrderModel.findOne({ orderId })
       .populate({ path: 'delivery_address', model: AddressModel })
-      .populate({ path: 'userId', model: User, select: 'name' })
+      .populate({ path: 'userId', model: User, select: 'name mobile' })
       .lean();
 
     if (!order) {

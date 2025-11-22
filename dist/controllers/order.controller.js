@@ -184,7 +184,7 @@ const getOrderByIdController = async (req, res) => {
         }
         const order = await Order_1.default.findOne({ orderId })
             .populate({ path: 'delivery_address', model: Address_1.default })
-            .populate({ path: 'userId', model: User_1.default, select: 'name' })
+            .populate({ path: 'userId', model: User_1.default, select: 'name mobile' })
             .lean();
         if (!order) {
             return res.status(404).json({
