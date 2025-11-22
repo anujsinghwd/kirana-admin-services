@@ -16,7 +16,9 @@
       "@middlewares/*": ["middlewares/*"],
       "@utils/*": ["utils/*"],
       "@config/*": ["config/*"],
-      "@validators/*": ["validators/*"]
+      "@validators/*": ["validators/*"],
+      "@events/*": ["events/*"],
+      "@services/*": ["services/*"]
     }
   },
   "include": ["src/**/*"]

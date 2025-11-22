@@ -7,6 +7,7 @@ exports.assignPersonnelController = exports.updateOrderStatusController = export
 const Order_1 = __importDefault(require("../models/Order"));
 const Address_1 = __importDefault(require("../models/Address"));
 const User_1 = __importDefault(require("../models/User"));
+const orderEvents_1 = require("../events/orderEvents");
 /**
  * Allowed statuses - must match OrderModel enums
  */
@@ -273,6 +274,39 @@ const updateOrderStatusController = async (req, res) => {
         const order = await Order_1.default.findOneAndUpdate({ orderId }, update, { new: true }).lean();
         if (!order) {
             return res.status(404).json({ success: false, error: true, message: "Order not found" });
+        }
+        // Emit order status changed event
+        try {
+            const timestamp = new Date();
+            // Emit specific events based on status
+            if (status === "Delivered") {
+                orderEvents_1.orderEventEmitter.emitDelivered({
+                    orderId: order.orderId,
+                    order: order,
+                    timestamp,
+                });
+                console.log(`📦 [Order] Delivered event emitted for order ${orderId}`);
+            }
+            else if (status === "Cancelled") {
+                orderEvents_1.orderEventEmitter.emitCancelled({
+                    orderId: order.orderId,
+                    order: order,
+                    timestamp,
+                });
+                console.log(`🚫 [Order] Cancelled event emitted for order ${orderId}`);
+            }
+            else if (status === "Rejected") {
+                orderEvents_1.orderEventEmitter.emitRejected({
+                    orderId: order.orderId,
+                    order: order,
+                    timestamp,
+                });
+                console.log(`❌ [Order] Rejected event emitted for order ${orderId}`);
+            }
+        }
+        catch (eventErr) {
+            console.error(`⚠️ [Order] Failed to emit event for order ${orderId}:`, eventErr);
+            // Don't fail the request if event emission fails
         }
         // Optionally: notify customer (email/push)
         try {

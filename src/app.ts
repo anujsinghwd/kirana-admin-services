@@ -14,6 +14,9 @@ import orderRoutes from '@routes/order.routes';
 import dashboardRouter from "@routes/dashboard.routes";
 import adminUserRoutes from '@routes/admin.user.routes';
 
+// Initialize event listeners
+import '@events/orderEventListeners';
+
 
 // Middlewares
 import { requestLogger } from '@middlewares/logger.middleware';

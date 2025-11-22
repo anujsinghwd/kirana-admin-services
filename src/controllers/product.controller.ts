@@ -8,23 +8,58 @@ import config from "@config/config";
 export class ProductController {
   /** ------------------ GET ALL ------------------ */
   public static getAll = catchAsync(async (req, res) => {
-    const { category, subcategory, published } = req.query;
+    const { 
+      category, 
+      subcategory, 
+      published,
+      q,
+      page: pageStr = "1",
+      limit: limitStr = "20"
+    } = req.query;
 
+    // Parse pagination parameters
+    const page = Math.max(1, parseInt(pageStr as string, 10));
+    const limit = Math.max(1, parseInt(limitStr as string, 10));
+    const skip = (page - 1) * limit;
+
+    // Build filter
     const filter: any = {};
     if (category) filter.category = category;
     if (subcategory) filter.subcategory = subcategory;
     if (published !== undefined) filter.published = published === "true";
 
+    // Search filter
+    if (q) {
+      const searchRegex = new RegExp(q as string, "i");
+      filter.$or = [
+        { name: searchRegex },
+        { description: searchRegex },
+      ];
+    }
+
+    // Get total count for pagination
+    const total = await Product.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit);
+
+    // Fetch paginated products
     const products = await Product.find(filter)
       .populate("category", "name _id")
       .populate("subcategory", "name _id")
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
     res.status(200).json({
       success: true,
       error: false,
       message: "Products fetched successfully",
       data: products,
+      pagination: {
+        currentPage: page,
+        totalPages: totalPages,
+        totalItems: total,
+        itemsPerPage: limit,
+      },
     });
   });
 

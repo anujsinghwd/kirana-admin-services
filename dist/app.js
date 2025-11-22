@@ -17,6 +17,8 @@ const subcategory_routes_1 = __importDefault(require("./routes/subcategory.route
 const order_routes_1 = __importDefault(require("./routes/order.routes"));
 const dashboard_routes_1 = __importDefault(require("./routes/dashboard.routes"));
 const admin_user_routes_1 = __importDefault(require("./routes/admin.user.routes"));
+// Initialize event listeners
+require("./events/orderEventListeners");
 // Middlewares
 const logger_middleware_1 = require("./middlewares/logger.middleware");
 const error_middleware_1 = require("./middlewares/error.middleware");

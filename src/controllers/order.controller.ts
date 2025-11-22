@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import OrderModel from "@models/Order";
 import AddressModel from "@models/Address";
 import User from "@models/User";
+import { orderEventEmitter } from "@events/orderEvents";
 
 interface AuthenticatedRequest extends Request {
   userId?: string;
@@ -326,6 +327,38 @@ export const updateOrderStatusController = async (
 
     if (!order) {
       return res.status(404).json({ success: false, error: true, message: "Order not found" });
+    }
+
+    // Emit order status changed event
+    try {
+      const timestamp = new Date();
+      
+      // Emit specific events based on status
+      if (status === "Delivered") {
+        orderEventEmitter.emitDelivered({
+          orderId: order.orderId,
+          order: order as any,
+          timestamp,
+        });
+        console.log(`📦 [Order] Delivered event emitted for order ${orderId}`);
+      } else if (status === "Cancelled") {
+        orderEventEmitter.emitCancelled({
+          orderId: order.orderId,
+          order: order as any,
+          timestamp,
+        });
+        console.log(`🚫 [Order] Cancelled event emitted for order ${orderId}`);
+      } else if (status === "Rejected") {
+        orderEventEmitter.emitRejected({
+          orderId: order.orderId,
+          order: order as any,
+          timestamp,
+        });
+        console.log(`❌ [Order] Rejected event emitted for order ${orderId}`);
+      }
+    } catch (eventErr: any) {
+      console.error(`⚠️ [Order] Failed to emit event for order ${orderId}:`, eventErr);
+      // Don't fail the request if event emission fails
     }
 
     // Optionally: notify customer (email/push)

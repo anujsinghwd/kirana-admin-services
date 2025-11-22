@@ -17,7 +17,12 @@ exports.ProductController = ProductController;
 _a = ProductController;
 /** ------------------ GET ALL ------------------ */
 ProductController.getAll = (0, catchAsync_1.catchAsync)(async (req, res) => {
-    const { category, subcategory, published } = req.query;
+    const { category, subcategory, published, q, page: pageStr = "1", limit: limitStr = "20" } = req.query;
+    // Parse pagination parameters
+    const page = Math.max(1, parseInt(pageStr, 10));
+    const limit = Math.max(1, parseInt(limitStr, 10));
+    const skip = (page - 1) * limit;
+    // Build filter
     const filter = {};
     if (category)
         filter.category = category;
@@ -25,15 +30,35 @@ ProductController.getAll = (0, catchAsync_1.catchAsync)(async (req, res) => {
         filter.subcategory = subcategory;
     if (published !== undefined)
         filter.published = published === "true";
+    // Search filter
+    if (q) {
+        const searchRegex = new RegExp(q, "i");
+        filter.$or = [
+            { name: searchRegex },
+            { description: searchRegex },
+        ];
+    }
+    // Get total count for pagination
+    const total = await Product_1.default.countDocuments(filter);
+    const totalPages = Math.ceil(total / limit);
+    // Fetch paginated products
     const products = await Product_1.default.find(filter)
         .populate("category", "name _id")
         .populate("subcategory", "name _id")
-        .sort({ createdAt: -1 });
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit);
     res.status(200).json({
         success: true,
         error: false,
         message: "Products fetched successfully",
         data: products,
+        pagination: {
+            currentPage: page,
+            totalPages: totalPages,
+            totalItems: total,
+            itemsPerPage: limit,
+        },
     });
 });
 /** ------------------ GET BY ID ------------------ */
