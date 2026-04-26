@@ -36,9 +36,14 @@ export interface ILooseConfig {
   lastPurchaseDate?: Date;               // 🆕 last restocking date
 }
 
+export interface IProductName {
+  en: string;
+  hi: string;
+}
+
 export interface IProductDTO extends Document {
-  name: string;
-  description?: string;
+  name: IProductName;
+  description: IProductName;
   category: mongoose.Types.ObjectId;
   subcategory: mongoose.Types.ObjectId;
   images: string[];
@@ -49,12 +54,18 @@ export interface IProductDTO extends Document {
   looseConfig?: ILooseConfig;
 }
 
-export interface IProduct extends IProductDTO, Document {}
+export interface IProduct extends IProductDTO, Document { }
 
 const ProductSchema = new Schema<IProduct>(
   {
-    name: { type: String, required: true },
-    description: { type: String },
+    name: {
+      en: { type: String, required: true, trim: true },
+      hi: { type: String, required: true, trim: true },
+    },
+    description: {
+      en: { type: String, trim: true },
+      hi: { type: String, trim: true },
+    },
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
     subcategory: { type: Schema.Types.ObjectId, ref: "SubCategory", required: true },
     images: [{ type: String, required: true }],
@@ -121,7 +132,7 @@ ProductSchema.pre("save", function (next) {
 });
 
 // 🆕 Virtual field for profit margin calculation
-ProductSchema.virtual('profitMargins').get(function(this: IProduct) {
+ProductSchema.virtual('profitMargins').get(function (this: IProduct) {
   if (this.isLoose && this.looseConfig) {
     const { pricePerUnit, buyingPricePerUnit } = this.looseConfig;
     if (buyingPricePerUnit && buyingPricePerUnit > 0) {
@@ -135,8 +146,8 @@ ProductSchema.virtual('profitMargins').get(function(this: IProduct) {
     return this.variants.map(v => ({
       unitValue: v.unitValue,
       unitType: v.unitType,
-      margin: v.buyingPrice && v.buyingPrice > 0 
-        ? ((v.price - v.buyingPrice) / v.buyingPrice * 100).toFixed(2) 
+      margin: v.buyingPrice && v.buyingPrice > 0
+        ? ((v.price - v.buyingPrice) / v.buyingPrice * 100).toFixed(2)
         : null,
       marginAmount: v.buyingPrice ? (v.price - v.buyingPrice).toFixed(2) : null
     }));

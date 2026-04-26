@@ -34,8 +34,10 @@ ProductController.getAll = (0, catchAsync_1.catchAsync)(async (req, res) => {
     if (q) {
         const searchRegex = new RegExp(q, "i");
         filter.$or = [
-            { name: searchRegex },
-            { description: searchRegex },
+            { "name.en": searchRegex },
+            { "name.hi": searchRegex },
+            { "description.en": searchRegex },
+            { "description.hi": searchRegex },
         ];
     }
     // Get total count for pagination
@@ -78,9 +80,25 @@ ProductController.getById = (0, catchAsync_1.catchAsync)(async (req, res) => {
 });
 /** ------------------ CREATE ------------------ */
 ProductController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
-    const { name, description, category, subcategory, published, isLoose, looseConfig, variants, } = req.body;
-    // Prevent duplicate product name in same category
-    const existing = await Product_1.default.findOne({ name, category });
+    const { category, subcategory, published, isLoose, looseConfig, variants, } = req.body;
+    // Parse name & description: they may arrive as JSON strings (multipart) or plain objects (JSON body)
+    let parsedName;
+    let parsedDescription;
+    try {
+        parsedName = typeof req.body.name === "string"
+            ? JSON.parse(req.body.name)
+            : req.body.name;
+        parsedDescription = req.body.description
+            ? typeof req.body.description === "string"
+                ? JSON.parse(req.body.description)
+                : req.body.description
+            : undefined;
+    }
+    catch {
+        throw new AppError_1.AppError("Invalid JSON in name or description", 400);
+    }
+    // Prevent duplicate product name (match on en name) in same category
+    const existing = await Product_1.default.findOne({ "name.en": parsedName.en, category });
     if (existing)
         throw new AppError_1.AppError(errorMessages_1.default.PRODUCT.DUPLICATE, 400);
     // Handle images upload
@@ -113,8 +131,8 @@ ProductController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
     if (isLoose === "true" && parsedVariants.length > 0)
         throw new AppError_1.AppError("Loose products cannot contain variants", 400);
     const product = await Product_1.default.create({
-        name,
-        description,
+        name: parsedName,
+        description: parsedDescription,
         category,
         subcategory,
         published: published === "true" || published === true,
@@ -134,11 +152,24 @@ ProductController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
 });
 /** ------------------ UPDATE ------------------ */
 ProductController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
-    const { name, description, category, subcategory, published, isLoose, looseConfig, } = req.body;
+    const { category, subcategory, published, isLoose, looseConfig, } = req.body;
     let variants = [];
     let deletedImages = [];
     let parsedLooseConfig = null;
+    // Parse name & description: they may arrive as JSON strings (multipart) or plain objects (JSON body)
+    let parsedName;
+    let parsedDescription;
     try {
+        if (req.body.name) {
+            parsedName = typeof req.body.name === "string"
+                ? JSON.parse(req.body.name)
+                : req.body.name;
+        }
+        if (req.body.description) {
+            parsedDescription = typeof req.body.description === "string"
+                ? JSON.parse(req.body.description)
+                : req.body.description;
+        }
         if (req.body.variants && typeof req.body.variants === "string")
             variants = JSON.parse(req.body.variants);
         else if (Array.isArray(req.body.variants))
@@ -155,7 +186,7 @@ ProductController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
         return res.status(400).json({
             success: false,
             error: true,
-            message: "Invalid JSON in variants, looseConfig, or deletedImages",
+            message: "Invalid JSON in name, description, variants, looseConfig, or deletedImages",
         });
     }
     const product = await Product_1.default.findById(req.params.id);
@@ -180,8 +211,10 @@ ProductController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
         newImageUrls = await Promise.all(uploadPromises);
     }
     // ✅ Update fields
-    product.name = name ?? product.name;
-    product.description = description ?? product.description;
+    if (parsedName)
+        product.name = parsedName;
+    if (parsedDescription)
+        product.description = parsedDescription;
     product.category = category ?? product.category;
     product.subcategory = subcategory ?? product.subcategory;
     product.published =

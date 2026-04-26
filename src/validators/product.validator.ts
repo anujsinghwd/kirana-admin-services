@@ -77,11 +77,19 @@ const looseConfigSchema = Joi.object({
 
 /** --- Main schema --- */
 export const createProductSchema = Joi.object({
-  name: Joi.string().trim().required().messages({
-    "string.empty": "Product name is required",
-  }),
+  name: Joi.object({
+    en: Joi.string().trim().required().messages({
+      "string.empty": "English name is required",
+    }),
+    hi: Joi.string().trim().required().messages({
+      "string.empty": "Hindi name is required",
+    }),
+  }).required(),
 
-  description: Joi.string().allow("", null).optional(),
+  description: Joi.object({
+    en: Joi.string().allow("", null).optional(),
+    hi: Joi.string().allow("", null).optional(),
+  }).required(),
 
   category: Joi.string().trim().required().messages({
     "string.empty": "Category ID is required",

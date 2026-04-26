@@ -69,10 +69,18 @@ const looseConfigSchema = joi_1.default.object({
 }).required();
 /** --- Main schema --- */
 exports.createProductSchema = joi_1.default.object({
-    name: joi_1.default.string().trim().required().messages({
-        "string.empty": "Product name is required",
-    }),
-    description: joi_1.default.string().allow("", null).optional(),
+    name: joi_1.default.object({
+        en: joi_1.default.string().trim().required().messages({
+            "string.empty": "English name is required",
+        }),
+        hi: joi_1.default.string().trim().required().messages({
+            "string.empty": "Hindi name is required",
+        }),
+    }).required(),
+    description: joi_1.default.object({
+        en: joi_1.default.string().allow("", null).optional(),
+        hi: joi_1.default.string().allow("", null).optional(),
+    }).required(),
     category: joi_1.default.string().trim().required().messages({
         "string.empty": "Category ID is required",
     }),

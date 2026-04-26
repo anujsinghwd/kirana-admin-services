@@ -39,8 +39,8 @@ CategoryController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
         imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.CATEGORY_IMAGE_PATH);
     }
     const createCategoryObj = {
-        name: req.body.name,
-        description: req.body.description,
+        name: JSON.parse(req.body.name),
+        description: JSON.parse(req.body.description),
     };
     if (imageUrl) {
         createCategoryObj.image = imageUrl;
@@ -77,11 +77,14 @@ CategoryController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
         // 📁 File path upload (fallback)
         imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.CATEGORY_IMAGE_PATH);
     }
-    const updateObj = { ...req.body };
+    const updateObj = {
+        name: JSON.parse(req.body.name),
+        description: JSON.parse(req.body.description),
+    };
     if (imageUrl) {
         updateObj.image = imageUrl;
     }
-    const category = await Category_1.default.findByIdAndUpdate(req.params.id, updateObj, {
+    const category = await Category_1.default.findByIdAndUpdate(req.params.id, { $set: updateObj }, {
         new: true,
     });
     if (!category)

@@ -37,13 +37,12 @@ export class CategoryController {
     }
 
     const createCategoryObj: ICategoryDTO = {
-      name: req.body.name,
-      description: req.body.description,
+      name: JSON.parse(req.body.name),
+      description: JSON.parse(req.body.description),
     };
     if (imageUrl) {
       createCategoryObj.image = imageUrl;
     }
-
     const category = await Category.create(createCategoryObj);
     res.status(201).json(category);
   });
@@ -87,14 +86,16 @@ export class CategoryController {
       );
     }
 
-    const updateObj: ICategoryDTO = { ...req.body };
+    const updateObj: ICategoryDTO = {
+      name: JSON.parse(req.body.name),
+      description: JSON.parse(req.body.description),
+    };
     if (imageUrl) {
       updateObj.image = imageUrl;
     }
-
     const category = await Category.findByIdAndUpdate(
       req.params.id,
-      updateObj,
+      { $set: updateObj },
       {
         new: true,
       }

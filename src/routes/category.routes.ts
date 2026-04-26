@@ -2,6 +2,7 @@ import express from "express";
 import { CategoryController } from "@controllers/category.controller";
 import { upload } from "@middlewares/upload.middleware";
 import { protect } from "@middlewares/auth.middleware";
+// import { preprocessCategoryFormData } from "@middlewares/parseJson.middleware";
 
 const router = express.Router();
 

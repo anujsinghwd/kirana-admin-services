@@ -46,7 +46,7 @@ SubCategoryController.create = (0, catchAsync_1.catchAsync)(async (req, res) => 
         ? req.body.category.map((id) => new mongoose_1.Types.ObjectId(id))
         : [new mongoose_1.Types.ObjectId(req.body.category)];
     const createSubCategoryObj = {
-        name: req.body.name,
+        name: JSON.parse(req.body.name),
         image: imageUrl || "",
         category: categoryIds,
     };
@@ -103,7 +103,7 @@ SubCategoryController.update = (0, catchAsync_1.catchAsync)(async (req, res) => 
             : [new mongoose_1.Types.ObjectId(req.body.category)];
     }
     const updateObj = {
-        name: req.body.name,
+        name: JSON.parse(req.body.name),
         category: categoryIds.length ? categoryIds : undefined,
     };
     if (imageUrl)

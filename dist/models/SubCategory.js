@@ -36,10 +36,18 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mongoose_1 = __importStar(require("mongoose"));
 const SubCategorySchema = new mongoose_1.Schema({
     name: {
-        type: String,
-        required: true,
-        unique: true,
-        trim: true,
+        en: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true,
+        },
+        hi: {
+            type: String,
+            required: true,
+            unique: true,
+            trim: true,
+        },
     },
     image: {
         type: String,

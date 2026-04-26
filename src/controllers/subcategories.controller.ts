@@ -53,7 +53,7 @@ export class SubCategoryController {
       : [new Types.ObjectId(req.body.category)];
 
     const createSubCategoryObj: ISubCategoryDTO = {
-      name: req.body.name,
+      name: JSON.parse(req.body.name),
       image: imageUrl || "",
       category: categoryIds,
     };
@@ -130,7 +130,7 @@ export class SubCategoryController {
     }
 
     const updateObj: Partial<ISubCategoryDTO> = {
-      name: req.body.name,
+      name: JSON.parse(req.body.name),
       category: categoryIds.length ? categoryIds : undefined,
     };
     if (imageUrl) updateObj.image = imageUrl;

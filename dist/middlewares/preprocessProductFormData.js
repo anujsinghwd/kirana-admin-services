@@ -11,6 +11,12 @@ const preprocessProductFormData = (req, res, next) => {
         if (req.body.deletedImages && typeof req.body.deletedImages === "string") {
             req.body.deletedImages = JSON.parse(req.body.deletedImages);
         }
+        if (req.body.name && typeof req.body.name === "string") {
+            req.body.name = JSON.parse(req.body.name);
+        }
+        if (req.body.description && typeof req.body.description === "string") {
+            req.body.description = JSON.parse(req.body.description);
+        }
         next();
     }
     catch (err) {
