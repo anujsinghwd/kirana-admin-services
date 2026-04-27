@@ -13,6 +13,7 @@ const cloudinary_service_1 = require("../services/cloudinary.service");
 const config_1 = __importDefault(require("../config/config"));
 const mongoose_1 = require("mongoose");
 const Product_1 = __importDefault(require("../models/Product"));
+const imageCompressor_1 = require("../utils/imageCompressor");
 class SubCategoryController {
 }
 exports.SubCategoryController = SubCategoryController;
@@ -35,11 +36,12 @@ SubCategoryController.create = (0, catchAsync_1.catchAsync)(async (req, res) => 
     // Upload image to Cloudinary if present
     if (req.file?.buffer) {
         // 🧠 Memory upload
-        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.buffer, config_1.default.CATEGORY_IMAGE_PATH);
+        const compressedBuffer = await (0, imageCompressor_1.compressImageTo70KB)(req.file.buffer);
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(compressedBuffer, config_1.default.SUBCATEGORY_IMAGE_PATH);
     }
     else if (req.file?.path) {
         // 📁 File path upload (fallback)
-        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.CATEGORY_IMAGE_PATH);
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.SUBCATEGORY_IMAGE_PATH);
     }
     // Ensure category IDs are valid ObjectIds
     const categoryIds = Array.isArray(req.body.category)
@@ -89,11 +91,12 @@ SubCategoryController.update = (0, catchAsync_1.catchAsync)(async (req, res) => 
     // Upload image to Cloudinary if present
     if (req.file?.buffer) {
         // 🧠 Memory upload
-        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.buffer, config_1.default.CATEGORY_IMAGE_PATH);
+        const compressedBuffer = await (0, imageCompressor_1.compressImageTo70KB)(req.file.buffer);
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(compressedBuffer, config_1.default.SUBCATEGORY_IMAGE_PATH);
     }
     else if (req.file?.path) {
         // 📁 File path upload (fallback)
-        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.CATEGORY_IMAGE_PATH);
+        imageUrl = await cloudinary_service_1.cloudinaryService.uploadImage(req.file.path, config_1.default.SUBCATEGORY_IMAGE_PATH);
     }
     // Handle category IDs
     let categoryIds = [];

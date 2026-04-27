@@ -6,6 +6,7 @@ import { cloudinaryService } from "services/cloudinary.service";
 import config from "@config/config";
 import { Types } from "mongoose";
 import Product from "@models/Product";
+import { compressImageTo70KB } from "@utils/imageCompressor";
 
 export class SubCategoryController {
   /** 🟢 Get All Subcategories */
@@ -35,15 +36,16 @@ export class SubCategoryController {
     // Upload image to Cloudinary if present
     if (req.file?.buffer) {
       // 🧠 Memory upload
+      const compressedBuffer = await compressImageTo70KB(req.file.buffer);
       imageUrl = await cloudinaryService.uploadImage(
-        req.file.buffer,
-        config.CATEGORY_IMAGE_PATH
+        compressedBuffer,
+        config.SUBCATEGORY_IMAGE_PATH
       );
     } else if (req.file?.path) {
       // 📁 File path upload (fallback)
       imageUrl = await cloudinaryService.uploadImage(
         req.file.path,
-        config.CATEGORY_IMAGE_PATH
+        config.SUBCATEGORY_IMAGE_PATH
       );
     }
 
@@ -109,15 +111,16 @@ export class SubCategoryController {
     // Upload image to Cloudinary if present
     if (req.file?.buffer) {
       // 🧠 Memory upload
+      const compressedBuffer = await compressImageTo70KB(req.file.buffer);
       imageUrl = await cloudinaryService.uploadImage(
-        req.file.buffer,
-        config.CATEGORY_IMAGE_PATH
+        compressedBuffer,
+        config.SUBCATEGORY_IMAGE_PATH
       );
     } else if (req.file?.path) {
       // 📁 File path upload (fallback)
       imageUrl = await cloudinaryService.uploadImage(
         req.file.path,
-        config.CATEGORY_IMAGE_PATH
+        config.SUBCATEGORY_IMAGE_PATH
       );
     }
 

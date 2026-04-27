@@ -1,5 +1,5 @@
 {
-  "name": "kirana-client-services",
+  "name": "kirana-admin-services",
   "version": "1.0.0",
   "description": "",
   "main": "dist/server.js",
@@ -27,6 +27,7 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^8.19.1",
     "multer": "^2.0.2",
+    "sharp": "^0.34.5",
     "streamifier": "^0.1.1",
     "winston": "^3.18.3"
   },
@@ -39,6 +40,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^24.7.2",
+    "@types/sharp": "^0.31.1",
     "@types/streamifier": "^0.1.2",
     "@types/winston": "^2.4.4",
     "nodemon": "^3.1.10",

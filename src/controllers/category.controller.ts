@@ -6,6 +6,7 @@ import { cloudinaryService } from "services/cloudinary.service";
 import config from "@config/config";
 import SubCategory from "@models/SubCategory";
 import Product from "@models/Product";
+import { compressImageTo70KB } from "@utils/imageCompressor";
 
 export class CategoryController {
   public static getAll = catchAsync(async (req, res) => {
@@ -24,8 +25,9 @@ export class CategoryController {
     // Upload image to Cloudinary if present
     if (req.file?.buffer) {
       // 🧠 Memory upload
+      const compressedBuffer = await compressImageTo70KB(req.file.buffer);
       imageUrl = await cloudinaryService.uploadImage(
-        req.file.buffer,
+        compressedBuffer,
         config.CATEGORY_IMAGE_PATH
       );
     } else if (req.file?.path) {
@@ -74,8 +76,9 @@ export class CategoryController {
     // Upload image to Cloudinary if present
     if (req.file?.buffer) {
       // 🧠 Memory upload
+      const compressedBuffer = await compressImageTo70KB(req.file.buffer);
       imageUrl = await cloudinaryService.uploadImage(
-        req.file.buffer,
+        compressedBuffer,
         config.CATEGORY_IMAGE_PATH
       );
     } else if (req.file?.path) {

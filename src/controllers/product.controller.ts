@@ -4,6 +4,7 @@ import { AppError } from "@utils/AppError";
 import ERROR_MESSAGES from "@config/errorMessages";
 import { cloudinaryService } from "services/cloudinary.service";
 import config from "@config/config";
+import { compressImageTo70KB } from "@utils/imageCompressor";
 
 export class ProductController {
   /** ------------------ GET ALL ------------------ */
@@ -118,9 +119,10 @@ export class ProductController {
     // Handle images upload
     let imageUrls: string[] = [];
     if (req.files && Array.isArray(req.files)) {
-      const uploadPromises = req.files.map((file: Express.Multer.File) =>
-        cloudinaryService.uploadImage(file.buffer, config.PRODUCT_IMAGE_PATH)
-      );
+      const uploadPromises = req.files.map(async (file: Express.Multer.File) => {
+        const compressedBuffer = await compressImageTo70KB(file.buffer);
+        return cloudinaryService.uploadImage(compressedBuffer, config.PRODUCT_IMAGE_PATH);
+      });
       imageUrls = await Promise.all(uploadPromises);
     }
 
@@ -238,9 +240,10 @@ export class ProductController {
     // ✅ Upload new images
     let newImageUrls: string[] = [];
     if (req.files && Array.isArray(req.files)) {
-      const uploadPromises = req.files.map((file: Express.Multer.File) =>
-        cloudinaryService.uploadImage(file.buffer, config.PRODUCT_IMAGE_PATH)
-      );
+      const uploadPromises = req.files.map(async (file: Express.Multer.File) => {
+        const compressedBuffer = await compressImageTo70KB(file.buffer);
+        return cloudinaryService.uploadImage(compressedBuffer, config.PRODUCT_IMAGE_PATH);
+      });
       newImageUrls = await Promise.all(uploadPromises);
     }
 

@@ -11,6 +11,7 @@ const AppError_1 = require("../utils/AppError");
 const errorMessages_1 = __importDefault(require("../config/errorMessages"));
 const cloudinary_service_1 = require("../services/cloudinary.service");
 const config_1 = __importDefault(require("../config/config"));
+const imageCompressor_1 = require("../utils/imageCompressor");
 class ProductController {
 }
 exports.ProductController = ProductController;
@@ -104,7 +105,10 @@ ProductController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
     // Handle images upload
     let imageUrls = [];
     if (req.files && Array.isArray(req.files)) {
-        const uploadPromises = req.files.map((file) => cloudinary_service_1.cloudinaryService.uploadImage(file.buffer, config_1.default.PRODUCT_IMAGE_PATH));
+        const uploadPromises = req.files.map(async (file) => {
+            const compressedBuffer = await (0, imageCompressor_1.compressImageTo70KB)(file.buffer);
+            return cloudinary_service_1.cloudinaryService.uploadImage(compressedBuffer, config_1.default.PRODUCT_IMAGE_PATH);
+        });
         imageUrls = await Promise.all(uploadPromises);
     }
     // Parse variants or looseConfig safely
@@ -207,7 +211,10 @@ ProductController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
     // ✅ Upload new images
     let newImageUrls = [];
     if (req.files && Array.isArray(req.files)) {
-        const uploadPromises = req.files.map((file) => cloudinary_service_1.cloudinaryService.uploadImage(file.buffer, config_1.default.PRODUCT_IMAGE_PATH));
+        const uploadPromises = req.files.map(async (file) => {
+            const compressedBuffer = await (0, imageCompressor_1.compressImageTo70KB)(file.buffer);
+            return cloudinary_service_1.cloudinaryService.uploadImage(compressedBuffer, config_1.default.PRODUCT_IMAGE_PATH);
+        });
         newImageUrls = await Promise.all(uploadPromises);
     }
     // ✅ Update fields
