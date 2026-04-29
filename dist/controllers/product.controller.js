@@ -7,6 +7,8 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.ProductController = void 0;
 const catchAsync_1 = require("../utils/catchAsync");
 const Product_1 = __importDefault(require("../models/Product"));
+const Category_1 = __importDefault(require("../models/Category"));
+const SubCategory_1 = __importDefault(require("../models/SubCategory"));
 const AppError_1 = require("../utils/AppError");
 const errorMessages_1 = __importDefault(require("../config/errorMessages"));
 const cloudinary_service_1 = require("../services/cloudinary.service");
@@ -111,6 +113,16 @@ ProductController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
         });
         imageUrls = await Promise.all(uploadPromises);
     }
+    // Parse keywords
+    let parsedKeywords;
+    try {
+        parsedKeywords = typeof req.body.keywords === "string"
+            ? JSON.parse(req.body.keywords)
+            : req.body.keywords;
+    }
+    catch {
+        throw new AppError_1.AppError("Invalid JSON in keywords", 400);
+    }
     // Parse variants or looseConfig safely
     let parsedVariants = [];
     let parsedLooseConfig = null;
@@ -134,16 +146,28 @@ ProductController.create = (0, catchAsync_1.catchAsync)(async (req, res) => {
     // Validation: cannot have both variants and looseConfig
     if (isLoose === "true" && parsedVariants.length > 0)
         throw new AppError_1.AppError("Loose products cannot contain variants", 400);
+    // Fetch denormalized names from Category & SubCategory
+    const [categoryDoc, subcategoryDoc] = await Promise.all([
+        Category_1.default.findById(category).select("name").lean(),
+        SubCategory_1.default.findById(subcategory).select("name").lean(),
+    ]);
+    if (!categoryDoc)
+        throw new AppError_1.AppError("Category not found", 404);
+    if (!subcategoryDoc)
+        throw new AppError_1.AppError("SubCategory not found", 404);
     const product = await Product_1.default.create({
         name: parsedName,
         description: parsedDescription,
         category,
         subcategory,
+        categoryName: categoryDoc.name,
+        subcategoryName: subcategoryDoc.name,
         published: published === "true" || published === true,
         isLoose: isLoose === "true" || isLoose === true,
         looseConfig: parsedLooseConfig || undefined,
         variants: parsedVariants || [],
         images: imageUrls,
+        keywords: parsedKeywords || { en: [], hi: [] },
     });
     if (!product)
         throw new AppError_1.AppError(errorMessages_1.default.PRODUCT.CREATE_FAIL || "Failed to create product", 400);
@@ -222,8 +246,37 @@ ProductController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
         product.name = parsedName;
     if (parsedDescription)
         product.description = parsedDescription;
-    product.category = category ?? product.category;
-    product.subcategory = subcategory ?? product.subcategory;
+    // Re-fetch and denormalize category/subcategory names if they changed
+    const newCategoryId = category ?? product.category;
+    const newSubcategoryId = subcategory ?? product.subcategory;
+    const categoryChanged = category && String(category) !== String(product.category);
+    const subcategoryChanged = subcategory && String(subcategory) !== String(product.subcategory);
+    if (categoryChanged || subcategoryChanged) {
+        const [updatedCategoryDoc, updatedSubcategoryDoc] = await Promise.all([
+            categoryChanged
+                ? Category_1.default.findById(newCategoryId).select("name").lean()
+                : Promise.resolve(null),
+            subcategoryChanged
+                ? SubCategory_1.default.findById(newSubcategoryId).select("name").lean()
+                : Promise.resolve(null),
+        ]);
+        if (categoryChanged) {
+            if (!updatedCategoryDoc)
+                throw new AppError_1.AppError("Category not found", 404);
+            product.category = newCategoryId;
+            product.categoryName = updatedCategoryDoc.name;
+        }
+        if (subcategoryChanged) {
+            if (!updatedSubcategoryDoc)
+                throw new AppError_1.AppError("SubCategory not found", 404);
+            product.subcategory = newSubcategoryId;
+            product.subcategoryName = updatedSubcategoryDoc.name;
+        }
+    }
+    else {
+        product.category = newCategoryId;
+        product.subcategory = newSubcategoryId;
+    }
     product.published =
         typeof published === "boolean"
             ? published
@@ -246,6 +299,10 @@ ProductController.update = (0, catchAsync_1.catchAsync)(async (req, res) => {
         product.looseConfig = undefined;
         if (Array.isArray(variants) && variants.length > 0)
             product.variants = variants;
+    }
+    // Update keywords
+    if (req.body.keywords) {
+        product.keywords = JSON.parse(req.body.keywords);
     }
     await product.save();
     res.status(200).json({

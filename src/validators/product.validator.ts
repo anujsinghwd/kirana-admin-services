@@ -107,6 +107,11 @@ export const createProductSchema = Joi.object({
   // mode toggle: loose product or packaged (variants)
   isLoose: Joi.boolean().default(false),
 
+  keywords: Joi.object({
+    en: Joi.array().items(Joi.string()).allow("", null).optional(),
+    hi: Joi.array().items(Joi.string()).allow("", null).optional(),
+  }).optional(),
+
   /**
    * variants: either JSON string (from form-data) or array of variant objects.
    * When isLoose === false, variants are required (at least 1).

@@ -92,6 +92,10 @@ exports.createProductSchema = joi_1.default.object({
     published: joi_1.default.boolean().default(true),
     // mode toggle: loose product or packaged (variants)
     isLoose: joi_1.default.boolean().default(false),
+    keywords: joi_1.default.object({
+        en: joi_1.default.array().items(joi_1.default.string()).allow("", null).optional(),
+        hi: joi_1.default.array().items(joi_1.default.string()).allow("", null).optional(),
+    }).optional(),
     /**
      * variants: either JSON string (from form-data) or array of variant objects.
      * When isLoose === false, variants are required (at least 1).

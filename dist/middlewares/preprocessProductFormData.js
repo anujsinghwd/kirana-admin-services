@@ -17,6 +17,15 @@ const preprocessProductFormData = (req, res, next) => {
         if (req.body.description && typeof req.body.description === "string") {
             req.body.description = JSON.parse(req.body.description);
         }
+        if (req.body.categoryName && typeof req.body.categoryName === "string") {
+            req.body.categoryName = JSON.parse(req.body.categoryName);
+        }
+        if (req.body.subcategoryName && typeof req.body.subcategoryName === "string") {
+            req.body.subcategoryName = JSON.parse(req.body.subcategoryName);
+        }
+        if (req.body.keywords && typeof req.body.keywords === "string") {
+            req.body.keywords = JSON.parse(req.body.keywords);
+        }
         next();
     }
     catch (err) {

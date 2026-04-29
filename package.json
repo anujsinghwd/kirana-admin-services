@@ -10,7 +10,8 @@
     "build": "rimraf dist && tsc && tsc-alias",
     "ts.check": "tsc --project tsconfig.json",
     "add-build": "git add dist",
-    "seed": "ts-node src/seed.ts"
+    "seed": "ts-node src/seed.ts",
+    "migrate:product-names": "ts-node -r tsconfig-paths/register src/scripts/backfill-product-names.ts"
   },
   "keywords": [],
   "author": "",

@@ -46,6 +46,12 @@ export interface IProductDTO extends Document {
   description: IProductName;
   category: mongoose.Types.ObjectId;
   subcategory: mongoose.Types.ObjectId;
+  categoryName: IProductName;
+  subcategoryName: IProductName;
+  keywords: {
+    en: string[];
+    hi: string[];
+  };
   images: string[];
   variants: IProductVariant[];
   published: boolean;
@@ -68,6 +74,18 @@ const ProductSchema = new Schema<IProduct>(
     },
     category: { type: Schema.Types.ObjectId, ref: "Category", required: true },
     subcategory: { type: Schema.Types.ObjectId, ref: "SubCategory", required: true },
+    categoryName: {
+      en: { type: String, required: true },
+      hi: { type: String, required: true },
+    },
+    subcategoryName: {
+      en: { type: String, required: true },
+      hi: { type: String, required: true },
+    },
+    keywords: {
+      en: { type: [String], default: [] },
+      hi: { type: [String], default: [] },
+    },
     images: [{ type: String, required: true }],
 
     // ✅ Variant-based products (packaged)

@@ -45,6 +45,18 @@ const ProductSchema = new mongoose_1.Schema({
     },
     category: { type: mongoose_1.Schema.Types.ObjectId, ref: "Category", required: true },
     subcategory: { type: mongoose_1.Schema.Types.ObjectId, ref: "SubCategory", required: true },
+    categoryName: {
+        en: { type: String, required: true },
+        hi: { type: String, required: true },
+    },
+    subcategoryName: {
+        en: { type: String, required: true },
+        hi: { type: String, required: true },
+    },
+    keywords: {
+        en: { type: [String], default: [] },
+        hi: { type: [String], default: [] },
+    },
     images: [{ type: String, required: true }],
     // ✅ Variant-based products (packaged)
     variants: [

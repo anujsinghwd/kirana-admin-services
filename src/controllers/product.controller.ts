@@ -1,5 +1,7 @@
 import { catchAsync } from "@utils/catchAsync";
 import Product from "@models/Product";
+import Category from "@models/Category";
+import SubCategory from "@models/SubCategory";
 import { AppError } from "@utils/AppError";
 import ERROR_MESSAGES from "@config/errorMessages";
 import { cloudinaryService } from "services/cloudinary.service";
@@ -126,6 +128,16 @@ export class ProductController {
       imageUrls = await Promise.all(uploadPromises);
     }
 
+    // Parse keywords
+    let parsedKeywords: { en: string[]; hi: string[] };
+    try {
+      parsedKeywords = typeof req.body.keywords === "string"
+        ? JSON.parse(req.body.keywords)
+        : req.body.keywords;
+    } catch {
+      throw new AppError("Invalid JSON in keywords", 400);
+    }
+
     // Parse variants or looseConfig safely
     let parsedVariants: any[] = [];
     let parsedLooseConfig: any = null;
@@ -149,16 +161,30 @@ export class ProductController {
     if (isLoose === "true" && parsedVariants.length > 0)
       throw new AppError("Loose products cannot contain variants", 400);
 
+    // Fetch denormalized names from Category & SubCategory
+    const [categoryDoc, subcategoryDoc] = await Promise.all([
+      Category.findById(category).select("name").lean(),
+      SubCategory.findById(subcategory).select("name").lean(),
+    ]);
+
+    if (!categoryDoc)
+      throw new AppError("Category not found", 404);
+    if (!subcategoryDoc)
+      throw new AppError("SubCategory not found", 404);
+
     const product = await Product.create({
       name: parsedName,
       description: parsedDescription,
       category,
       subcategory,
+      categoryName: categoryDoc.name,
+      subcategoryName: subcategoryDoc.name,
       published: published === "true" || published === true,
       isLoose: isLoose === "true" || isLoose === true,
       looseConfig: parsedLooseConfig || undefined,
       variants: parsedVariants || [],
       images: imageUrls,
+      keywords: parsedKeywords || { en: [], hi: [] },
     });
 
     if (!product)
@@ -250,8 +276,40 @@ export class ProductController {
     // ✅ Update fields
     if (parsedName) product.name = parsedName;
     if (parsedDescription) product.description = parsedDescription;
-    product.category = category ?? product.category;
-    product.subcategory = subcategory ?? product.subcategory;
+
+    // Re-fetch and denormalize category/subcategory names if they changed
+    const newCategoryId = category ?? product.category;
+    const newSubcategoryId = subcategory ?? product.subcategory;
+
+    const categoryChanged = category && String(category) !== String(product.category);
+    const subcategoryChanged = subcategory && String(subcategory) !== String(product.subcategory);
+
+    if (categoryChanged || subcategoryChanged) {
+      const [updatedCategoryDoc, updatedSubcategoryDoc] = await Promise.all([
+        categoryChanged
+          ? Category.findById(newCategoryId).select("name").lean()
+          : Promise.resolve(null),
+        subcategoryChanged
+          ? SubCategory.findById(newSubcategoryId).select("name").lean()
+          : Promise.resolve(null),
+      ]);
+
+      if (categoryChanged) {
+        if (!updatedCategoryDoc) throw new AppError("Category not found", 404);
+        product.category = newCategoryId as any;
+        product.categoryName = updatedCategoryDoc.name;
+      }
+
+      if (subcategoryChanged) {
+        if (!updatedSubcategoryDoc) throw new AppError("SubCategory not found", 404);
+        product.subcategory = newSubcategoryId as any;
+        product.subcategoryName = updatedSubcategoryDoc.name;
+      }
+    } else {
+      product.category = newCategoryId as any;
+      product.subcategory = newSubcategoryId as any;
+    }
+
     product.published =
       typeof published === "boolean"
         ? published
@@ -276,6 +334,11 @@ export class ProductController {
       product.looseConfig = undefined;
       if (Array.isArray(variants) && variants.length > 0)
         product.variants = variants;
+    }
+
+    // Update keywords
+    if (req.body.keywords) {
+      product.keywords = JSON.parse(req.body.keywords);
     }
 
     await product.save();
